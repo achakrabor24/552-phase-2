@@ -11,6 +11,8 @@
 */
 module alu (InA, InB, Cin, Oper, invA, invB, sign, Out, Zero, Ofl);
 
+// Change
+
     parameter OPERAND_WIDTH = 16;    
     parameter NUM_OPERATIONS = 5;
        
