@@ -6,7 +6,7 @@
 */
 module decode(RegWrite, is_JAL, SignExt, ImmdSrc, clk, rst, RegDst, instruction, PC_2, write_data, read_data_1, read_data_2, Immd,
  PC_2_I, PC_2_D, err);
-
+	// test push to main
 	input RegWrite, is_JAL, SignExt, ImmdSrc, clk, rst;
 	input [1:0] RegDst;
 	input [15:0] instruction, PC_2, write_data;
