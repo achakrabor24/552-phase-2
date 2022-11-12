@@ -4,11 +4,11 @@
    Filename        : fetch.v
    Description     : This is the module for the overall fetch stage of the processor.
 */
-module fetch(next_PC, clk, rst, PC_2, instruction, fetch_enable, createdump, err);
+module fetch(next_PC, clk, rst, PC_2, instruction, fetch_enable, createdump, err, PC);
 
 	input [15:0] next_PC;
 	input clk, rst, fetch_enable, createdump;
-	output [15:0] PC_2, instruction;
+	output [15:0] PC, PC_2, instruction;
 	output err; 
 
 	wire dummy;
@@ -25,5 +25,6 @@ module fetch(next_PC, clk, rst, PC_2, instruction, fetch_enable, createdump, err
 
 	// For now
 	assign err = 1'b0;
+	assign PC = read_addr;
    
 endmodule

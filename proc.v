@@ -31,14 +31,14 @@ wire [4:0] ALUOp;
 wire [1:0] PCSrc, RegDst;
 
 // Inputs and outputs between sections
-wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D;  
+wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC;  
 
 // errors
 wire errF, errD, errX, errM, errW;
 
 fetch fetch0(.next_PC(next_PC), .clk(clk), .rst(rst), 
              .PC_2(PC_2), .instruction(instruction), .err(errF), 
-            .fetch_enable(fetch_enable), .createdump(createdump)
+            .fetch_enable(fetch_enable), .createdump(createdump), .PC(PC)
             );
 
 // F/D pipeline registers
@@ -89,7 +89,7 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
                  .sign(de_sign), .Cin(de_Cin), .is_LBI(de_is_LBI), 
                  .is_SLBI(is_SLBI), .PCSrc(PCSrc), .ALUOp(ALUOp), 
                  .next_PC(de_next_PC), .ALU_Result_out(ALU_Result), .err(errX), 
-                 .is_branch(is_branch)
+                 .is_branch(is_branch), .PC(PC)
                  );
 
 // E/M pipeline register
