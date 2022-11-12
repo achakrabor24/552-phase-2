@@ -4,7 +4,7 @@
    Filename        : wb.v
    Description     : This is the module for the overall Write Back stage of the processor.
 */
-module wb (/* TODO: Add appropriate inputs/outputs for your WB stage here*/);
+module wb(ALU_result, read_data, MemtoReg, write_data, err);
 
 	input [15:0] ALU_result, read_data;
 	input MemtoReg;

@@ -31,7 +31,8 @@ wire [4:0] ALUOp;
 wire [1:0] PCSrc, RegDst;
 
 // Inputs and outputs between sections
-wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC;  
+wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC, 
+writeReg, readReg1, readReg2;  
 
 // errors
 wire errF, errD, errX, errM, errW;
@@ -59,7 +60,7 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                .MemtoReg(MemtoReg), .sign(sign), .invA(invA), 
                .invB(invB), .Cin(Cin), .PCSrc(PCSrc), 
                .ALUOp(ALUOp), .fetch_enable(fetch_enable), .is_branch(is_branch), 
-               .createdump(createdump), .err(err)
+               .createdump(createdump), .err(err), .writeReg(writeReg), .readReg1(readReg1), .readReg2(readReg2)
                );
 
 // D/E pipeline register
@@ -82,6 +83,7 @@ dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(is_LBI), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(MemRead), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(MemtoReg), .clk(clk), .rst(rst));
+// Pipeline writeReg, readReg1, readReg2? 
 
 execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_read_data_2), 
                  .PC_2(de_PC_2), .PC_2_I(de_PC_2_I), .PC_2_D(de_PC_2_D), 
