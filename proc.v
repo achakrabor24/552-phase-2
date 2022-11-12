@@ -41,14 +41,17 @@ fetch fetch0(.next_PC(next_PC), .clk(clk), .rst(rst), .PC_2(PC_2), .instruction(
 
 // F/D pipeline register
 
-control_unit signals(.opcode(instruction[15:11]), .funct(instruction[1:0]), .rst(rst), .RegWrite(RegWrite), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .ALUSrc(ALUSrc), 
-.is_SLBI(is_SLBI), .MemRead(MemRead), .MemWrite(MemWrite), .MemtoReg(MemtoReg), .sign(sign), .invA(invA), .invB(invB), .Cin(Cin), 
-.is_LBI(is_LBI), .is_JAL(is_JAL), .PCSrc(PCSrc), .RegDst(RegDst), .ALUOp(ALUOp), .fetch_enable(fetch_enable), .createdump(createdump),
-.is_branch(is_branch));
-
-decode decode0(.RegWrite(RegWrite), .is_JAL(is_JAL), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .clk(clk), .rst(rst), .RegDst(RegDst), 
-.instruction(instruction), .PC_2(PC_2), .write_data(write_data), .read_data_1(read_data_1), .read_data_2(read_data_2), .Immd(Immd), 
-.PC_2_I(PC_2_I), .PC_2_D(PC_2_D), .err(errD));
+// control_unit signals(.opcode(instruction[15:11]), .funct(instruction[1:0]), .rst(rst), .RegWrite(RegWrite), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .ALUSrc(ALUSrc), 
+// .is_SLBI(is_SLBI), .MemRead(MemRead), .MemWrite(MemWrite), .MemtoReg(MemtoReg), .sign(sign), .invA(invA), .invB(invB), .Cin(Cin), 
+// .is_LBI(is_LBI), .is_JAL(is_JAL), .PCSrc(PCSrc), .RegDst(RegDst), .ALUOp(ALUOp), .fetch_enable(fetch_enable), .createdump(createdump),
+// .is_branch(is_branch));
+// decode decode0(.RegWrite(RegWrite), .is_JAL(is_JAL), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .clk(clk), .rst(rst), .RegDst(RegDst), 
+// .instruction(instruction), .PC_2(PC_2), .write_data(write_data), .read_data_1(read_data_1), .read_data_2(read_data_2), .Immd(Immd), 
+// .PC_2_I(PC_2_I), .PC_2_D(PC_2_D), .err(errD));
+decode decode0(.is_JAL(is_JAL), .clk(clk), .rst(rst), .RegDst(RegDst), .instruction(instruction), .PC_2(PC_2), .write_data(write_data), .read_data_1(read_data_1), 
+.read_data_2(read_data_2), .Immd(Immd), .PC_2_I(PC_2_I), .PC_2_D(PC_2_D), .ALUSrc(ALUSrc), .is_SLBI(is_SLBI), .is_LBI(is_LBI), .MemRead(MemRead), .MemWrite(MemWrite), 
+.MemtoReg(MemtoReg), .sign(sign), .invA(invA), .invB(invB), .Cin(Cin), .PCSrc(PCSrc), .ALUOp(ALUOp), .fetch_enable(fetch_enable), .is_branch(is_branch), 
+.createdump(createdump), .err(err));
 
 // D/E pipeline register
 
