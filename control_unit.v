@@ -9,7 +9,8 @@ input rst;
 output RegWrite, SignExt, ImmdSrc, ALUSrc, is_SLBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, is_LBI, is_JAL, fetch_enable, 
 createdump, is_branch;
 output [4:0] ALUOp;
-output [1:0] PCSrc, RegDst;
+output [1:0] RegDst;
+output [2:0] PCSrc;
 
 // Need reg for case statement
 reg RegWrite_temp, SignExt_temp, ImmdSrc_temp, ALUSrc_temp, is_SLBI_temp, MemRead_temp, MemWrite_temp, MemtoReg_temp, sign_temp, invA_temp, 
@@ -797,6 +798,7 @@ default: begin
 
 // NOP
 	RegWrite_temp = 1'b0;
+	PCSrc_temp = 3'b100; // CurrPC -> next_PC
 
 end
 
