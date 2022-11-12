@@ -1,6 +1,8 @@
-module hazard(PCSrc, FD_NOP, DE_NOP, EM_NOP, MW_NOP);
+module hazard(clk, rst, PCSrc, stall, FD_NOP, DE_NOP, EM_NOP, MW_NOP);
 
-	input [1:0] PCSrc; 
+	input [1:0] PCSrc;
+	input stall; // createdump 
+	input clk, rst;
 
 	output FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 
