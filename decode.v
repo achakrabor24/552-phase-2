@@ -4,11 +4,10 @@
    Filename        : decode.v
    Description     : This is the module for the overall decode stage of the processor.
 */
-module decode(is_JAL, clk, rst, RegDst, instruction, PC_2, write_data, read_data_1, read_data_2, Immd,
+module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2, Immd,
  PC_2_I, PC_2_D, ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, PCSrc, ALUOp, fetch_enable, is_branch, createdump, err);
 
-	input  is_JAL, clk, rst;
-	input [1:0] RegDst;
+	input clk, rst;
 	input [15:0] instruction, PC_2, write_data;
 
 	output [15:0] read_data_1, read_data_2, Immd, PC_2_I, PC_2_D;
@@ -21,7 +20,8 @@ module decode(is_JAL, clk, rst, RegDst, instruction, PC_2, write_data, read_data
 	wire [2:0] writeRegSel_temp;
 	wire dummy1, dummy2;
 	// control wires (outputs from control_unit only used in decode)
-	wire RegWrite, SignExt, ImmdSrc, is_JAL, RegDst;
+	wire [1:0] RegDst;
+	wire RegWrite, SignExt, ImmdSrc, is_JAL;
 
 	control_unit signals(.opcode(instruction[15:11]), .funct(instruction[1:0]), .rst(rst), .RegWrite(RegWrite), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .ALUSrc(ALUSrc), 
 	.is_SLBI(is_SLBI), .MemRead(MemRead), .MemWrite(MemWrite), .MemtoReg(MemtoReg), .sign(sign), .invA(invA), .invB(invB), .Cin(Cin), 
