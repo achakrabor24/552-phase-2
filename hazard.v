@@ -1,7 +1,7 @@
 module hazard(clk, rst, PCSrc, stall, FD_NOP, DE_NOP, EM_NOP, MW_NOP, if_stall, ID_EX_MemRead, IF_ID_RegisterRs, IF_ID_RegisterRt,
 ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegWrite, EX_MEM_RegisterRd, MEM_WB_RegWrite, MEM_WB_RegisterRd, MEM_WB_RegisterRd);
 
-	input [1:0] PCSrc;
+	input [2:0] PCSrc;
 	input stall; // createdump 
 	input clk, rst;
 
@@ -26,20 +26,24 @@ assign if_stall_exe = EX_MEM_RegWrite & ~(EX_MEM_RegisterRd == 0) & ((ID_EX_Regi
 // MEM/WB.RegWrite & ~(MEM/WB.RegisterRd == 0) & ((ID/EX.RegisterRs == MEM/WB.RegisterRd) | (ID/EX.RegisterRt == MEM/WB.RegisterRd))
 assign if_stall_mem = MEM_WB_RegWrite & ~(MEM_WB_RegisterRd == 0) & ((ID_EX_RegisterRs == MEM_WB_RegisterRd) | (ID_EX_RegisterRt == MEM_WB_RegisterRd)) ? 1'b1: 1'b0;
 
-// He flops these signals, not sure why
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// NOT NEEDED FOR THIS PHASE
 // How to handle branch hazards
 // Always predict branch-not-taken
 // If branch taken, then instructions that are being fetched and decoded must be flushed
 // Change the 3 instructions in the IF, ID, and EX stages when the branch reaches the MEM stage
 
 // If needs to stall, force hold PC
-// How do I do this? Add another option for PCSrc mux that reiterates read_addr or current PC
+// How do I do this? Add another option for PCSrc mux that reiterates read_addr or current PC (I did this)
 
 // Recycle signal assignment
 // Not sure what this is or what to do here
+// dff_N #(.N(1)) reg_stall_FD (.Q(stall_fd), .D((stall|stall_latched)&~pc_sel[1]),.clk(clk),.rst(rst));
+// dff_N #(.N(1)) reg_stall_DE      (.Q(stall_de),.D(stall_fd),.clk(clk),.rst(rst));
+// dff_N #(.N(1)) reg_stall_EM      (.Q(stall_em),.D(stall_de),.clk(clk),.rst(rst));
+// dff_N #(.N(1)) reg_stall_MW      (.Q(stall_mw),.D(stall_em),.clk(clk),.rst(rst));
 
 /////////////////////////////////////////////////////////// NOP signal assignment //////////////////////////////////////////////////////////
 
