@@ -41,20 +41,23 @@ assign if_stall_mem = MEM_WB_RegWrite & ~(MEM_WB_RegisterRd == 0) & ((ID_EX_Regi
 
 // I force PC hold as PCSrc signal in NOP opcode in control unit
 
-// Recycle signal assignment
+wire stall_fd, stall_de, stall_em, stall_mw;
+
+// Recycle signal assignment (?) 
+
 // Not sure what this is or what to do here
-// dff_N #(.N(1)) reg_stall_FD (.Q(stall_fd), .D((stall|stall_latched)&~pc_sel[1]),.clk(clk),.rst(rst));
-// dff_N #(.N(1)) reg_stall_DE      (.Q(stall_de),.D(stall_fd),.clk(clk),.rst(rst));
-// dff_N #(.N(1)) reg_stall_EM      (.Q(stall_em),.D(stall_de),.clk(clk),.rst(rst));
-// dff_N #(.N(1)) reg_stall_MW      (.Q(stall_mw),.D(stall_em),.clk(clk),.rst(rst));
+dff_N #(.N(1)) reg_stall_FD      (.Q(stall_fd), .D(stall),.clk(clk),.rst(rst));
+dff_N #(.N(1)) reg_stall_DE      (.Q(stall_de),.D(stall_fd),.clk(clk),.rst(rst));
+dff_N #(.N(1)) reg_stall_EM      (.Q(stall_em),.D(stall_de),.clk(clk),.rst(rst));
+dff_N #(.N(1)) reg_stall_MW      (.Q(stall_mw),.D(stall_em),.clk(clk),.rst(rst));
 
 /////////////////////////////////////////////////////////// NOP signal assignment //////////////////////////////////////////////////////////
 
 // If control unit says stall, stall or if branch taken in a predict-not-taken scheme (resolved in fetch and decode)
 assign FD_NOP = stall | br_j_taken; 
-assign DE_NOP = br_j_taken | if_stall_load; 
-assign EM_NOP = if_stall_exe;
-assign MW_NOP = if_stall_mem;
+assign DE_NOP = br_j_taken | if_stall_load | stall_de; 
+assign EM_NOP = if_stall_exe | stall_em;
+assign MW_NOP = if_stall_mem | stall_mw;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

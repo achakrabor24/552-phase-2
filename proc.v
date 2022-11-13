@@ -164,7 +164,7 @@ wire FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 
 hazard h0(.clk(clk), .rst(rst), .PCSrc(PCSrc), .stall(createdump), .FD_NOP(FD_NOP), .DE_NOP(DE_NOP), .EM_NOP(EM_NOP), .MW_NOP(MW_NOP), 
 .ID_EX_MemRead(de_MemRead), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), 
-.EX_MEM_RegWrite(em_RegWrite), .EX_MEM_RegisterRd(em_writeReg), .MEM_WB_RegWrite(), .MEM_WB_RegisterRd(mw_writeReg));
+.EX_MEM_RegWrite(em_RegWrite), .EX_MEM_RegisterRd(em_writeReg), .MEM_WB_RegWrite(mw_RegWrite), .MEM_WB_RegisterRd(mw_writeReg));
    
 endmodule // proc
 // DUMMY LINE FOR REV CONTROL :0:

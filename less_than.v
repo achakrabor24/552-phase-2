@@ -26,8 +26,6 @@ assign equal = (sum == 16'b0) ? 1'b1: 1'b0;
 assign A_neg_B_pos = (A[15] == 1'b1 & B[15] == 1'b0) ? 1'b1 : 1'b0;
 assign B_neg_A_pos = (A[15] == 1'b0 & B[15] == 1'b1) ? 1'b1 : 1'b0;
 
-// assign A_is_less = (equal == 1'b1) ? 1'b0: (A_neg_B_pos == 1'b1) ? 1'b1: (both == 1'b1) ? 1'b1 : 1'b0;
-// assign A_is_less = both | ~equal | A_neg_B_pos | ~B_neg_A_pos;
 assign A_is_less = both | A_neg_B_pos;
 
 endmodule
