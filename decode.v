@@ -6,7 +6,7 @@
 */
 module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2, Immd,
  PC_2_I, PC_2_D, ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, PCSrc, ALUOp, fetch_enable, is_branch,
- createdump, err, writeReg, readReg1, readReg2);
+ createdump, err, writeReg, readReg1, readReg2, RegWrite);
 
 	input clk, rst;
 	input [15:0] instruction, PC_2, write_data;
