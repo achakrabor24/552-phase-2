@@ -1,0 +1,1 @@
+wsrun.pl -pipe -prog /u/s/w/swamit/public/html/courses/cs552/fall2022/handouts/testprograms/public/inst_tests/add_0.asm proc_hier_pbench *.v
