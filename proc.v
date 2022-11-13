@@ -44,12 +44,14 @@ fetch fetch0(.next_PC(next_PC), .clk(clk), .rst(rst),
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 wire [15:0] fd_next_PC, fd_instruction, fd_PC_2, fd_PC;
+wire [2:0] fd_readReg1, fd_readReg2;
+
 dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(next_PC), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(instruction), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(PC_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(PC), .clk(clk), .rst(rst));
-
-
+dff_N #(.N(16)) reg_fd_readReg1 (.q(fd_readReg1), .d(instruction[10:8]), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_readReg2 (.q(fd_readReg2), .d(instruction[7:5]), .clk(clk), .rst(rst));
 
 // Set control signals to 0 if FD_NOP = 1
 
@@ -69,7 +71,7 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
 wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D;
 wire de_Immd, de_ALUSrc, de_invA, de_invB, de_sign, Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
-wire [15:0] de_readReg1, de_readReg2, de_writeReg;
+wire [2:0] de_readReg1, de_readReg2, de_writeReg;
 
 dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(fd_next_PC), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_2), .d(read_data_1), .clk(clk), .rst(rst));
@@ -88,8 +90,8 @@ dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(is_LBI), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(MemRead), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_reg_rs (.q(de_readReg1), .d(readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_reg_rt (.q(de_readReg2), .d(readReg2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_reg_rs (.q(de_readReg1), .d(fd_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_reg_rt (.q(de_readReg2), .d(fd_readReg2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_reg_rd (.q(de_writeReg), .d(writeReg), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_reg_wr (.q(de_RegWrite), .d(RegWrite), .clk(clk), .rst(rst));
  
@@ -110,7 +112,8 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
 ///////////////////////////////////////////////// E/M pipeline register ///////////////////////////////////////////////////////////////
 wire em_MemRead, em_MemWrite, em_read_data_2, em_MemtoReg;
 wire [15:0] em_ALU_Result;
-wire [15:0] em_readReg1, em_readReg2, em_writeReg, em_RegWrite;
+wire [2:0] em_readReg1, em_readReg2, em_writeReg;
+wire em_RegWrite;
 
 dff_N #(.N(16)) reg_em_ALU_Result(.q(em_ALU_Result), .d(ALU_Result), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(de_MemRead), .clk(clk), .rst(rst));
@@ -133,7 +136,8 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
 wire [15:0] mw_read_data, mw_ALU_Result, mw_MemtoReg;
-wire [15:0] mw_readReg1, mw_readReg2, mw_writeReg, mw_RegWrite;
+wire [2:0] mw_readReg1, mw_readReg2, mw_writeReg;
+wire mw_RegWrite;
 
 dff_N #(.N(16)) reg_mw_ALU_Result(.q(mw_ALU_Result), .d(em_ALU_Result), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(read_data), .clk(clk), .rst(rst));
@@ -159,8 +163,8 @@ assign err = errF | errD | errX | errM | errW;
 wire FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 
 hazard h0(.clk(clk), .rst(rst), .PCSrc(PCSrc), .stall(createdump), .FD_NOP(FD_NOP), .DE_NOP(DE_NOP), .EM_NOP(EM_NOP), .MW_NOP(MW_NOP), 
-.ID_EX_MemRead(de_MemRead), .IF_ID_RegisterRs(), .IF_ID_RegisterRt(), .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), 
-.EX_MEM_RegWrite(), .EX_MEM_RegisterRd(em_writeReg), .MEM_WB_RegWrite(), .MEM_WB_RegisterRd(mw_writeReg));
+.ID_EX_MemRead(de_MemRead), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), 
+.EX_MEM_RegWrite(em_RegWrite), .EX_MEM_RegisterRd(em_writeReg), .MEM_WB_RegWrite(), .MEM_WB_RegisterRd(mw_writeReg));
    
 endmodule // proc
 // DUMMY LINE FOR REV CONTROL :0:
