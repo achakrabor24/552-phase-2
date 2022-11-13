@@ -4,6 +4,17 @@ ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegWrite, EX_MEM_RegisterRd, MEM_WB_R
 	input [2:0] PCSrc;
 	input stall; // createdump 
 	input clk, rst;
+	input stall,
+		  ID_EX_MemRead, 
+		  IF_ID_RegisterRs, 
+		  IF_ID_RegisterRt, 
+		  ID_EX_RegisterRs, 
+		  ID_EX_RegisterRt, 
+		  EX_MEM_RegWrite, 
+		  EX_MEM_RegisterRd, 
+		  MEM_WB_RegWrite, 
+		  MEM_WB_RegisterRd, 
+		  MEM_WB_RegisterRd;
 
 	output FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 
