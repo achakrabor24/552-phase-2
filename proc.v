@@ -70,7 +70,7 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
 wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D;
-wire de_Immd, de_ALUSrc, de_invA, de_invB, de_sign, Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
+wire de_Immd, de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg;
 
 dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(fd_next_PC), .clk(clk), .rst(rst));
@@ -82,7 +82,7 @@ dff_N #(.N(16)) reg_de_PC_2_D (.q(de_PC_2_D), .d(PC_2_D), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_Immd (.q(de_Immd), .d(Immd), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_ALUSrc (.q(de_ALUSrc), .d(ALUSrc), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_invA(.q(de_invA), .d(invA), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_invA(.q(de_invB), .d(invB), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_invB(.q(de_invB), .d(invB), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_sign(.q(de_sign), .d(sign), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_Cin(.q(de_Cin), .d(Cin), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_is_SLBI(.q(de_is_SLBI), .d(is_SLBI), .clk(clk), .rst(rst));

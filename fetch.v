@@ -14,7 +14,7 @@ module fetch(next_PC, clk, rst, PC_2, instruction, fetch_enable, createdump, err
 	wire dummy;
 	wire [15:0] read_addr;
 
-	reg_16b PC(.Q(read_addr), .D(next_PC), .clk(clk), .rst(rst), .writeEn(fetch_enable)); 
+	reg_16b PC0(.Q(read_addr), .D(next_PC), .clk(clk), .rst(rst), .writeEn(fetch_enable)); 
 
 	// Increment PC using CLA
 	cla_16b cla0(.sum(PC_2), .c_out(dummy), .a(read_addr), .b(16'b0000_0000_0000_0010), .c_in(1'b0));

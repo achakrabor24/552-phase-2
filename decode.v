@@ -14,7 +14,7 @@ module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2,
 	output [15:0] read_data_1, read_data_2, Immd, PC_2_I, PC_2_D;
 	output err;
 	// control outputs
-	output ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, PCSrc, fetch_enable, is_branch, createdump;
+	output ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, RegWrite, sign, invA, invB, Cin, PCSrc, fetch_enable, is_branch, createdump;
 	output [4:0] ALUOp;
 
 	// register values
@@ -25,7 +25,7 @@ module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2,
 	wire dummy1, dummy2;
 	// control wires (outputs from control_unit only used in decode)
 	wire [1:0] RegDst;
-	wire RegWrite, SignExt, ImmdSrc, is_JAL;
+	wire SignExt, ImmdSrc, is_JAL;
 
 	control_unit signals(.opcode(instruction[15:11]), .funct(instruction[1:0]), .rst(rst), .RegWrite(RegWrite), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .ALUSrc(ALUSrc), 
 	.is_SLBI(is_SLBI), .MemRead(MemRead), .MemWrite(MemWrite), .MemtoReg(MemtoReg), .sign(sign), .invA(invA), .invB(invB), .Cin(Cin), 
