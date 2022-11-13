@@ -1,11 +1,11 @@
-module hazard(clk, rst, PCSrc, stall, FD_NOP, DE_NOP, EM_NOP, MW_NOP, if_stall, ID_EX_MemRead, IF_ID_RegisterRs, IF_ID_RegisterRt,
+module hazard(clk, rst, PCSrc, stall, FD_NOP, DE_NOP, EM_NOP, MW_NOP, ID_EX_MemRead, IF_ID_RegisterRs, IF_ID_RegisterRt,
 ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegWrite, EX_MEM_RegisterRd, MEM_WB_RegWrite, MEM_WB_RegisterRd, MEM_WB_RegisterRd);
 
 	input [2:0] PCSrc;
 	input stall; // createdump 
 	input clk, rst;
 
-	output FD_NOP, DE_NOP, EM_NOP, MW_NOP, if_stall;
+	output FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 
 // Branch detection for flushing
 wire br_j_taken, if_stall_load, if_stall_exe, if_stall_mem;
