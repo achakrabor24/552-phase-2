@@ -24,63 +24,97 @@ module proc (/*AUTOARG*/
    
    /* your code here -- should include instantiations of fetch, decode, execute, mem and wb modules */
 
-// Control signals  
-wire is_branch, RegWrite, SignExt, ImmdSrc, ALUSrc, is_SLBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, is_LBI, fetch_enable,
-createdump;
-wire [4:0] ALUOp;
-wire [1:0] RegDst;
-wire [2:0] PCSrc;
 
+// Hazard signals
+wire FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 // Inputs and outputs between sections
-wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC; 
-wire [2:0] writeReg, readReg1, readReg2;  
-
+wire [15:0] ALU_Result, read_data, PC; 
 // errors
 wire errF, errD, errX, errM, errW;
+wire createdump;
 
-fetch fetch0(.next_PC(next_PC), .clk(clk), .rst(rst), 
-             .PC_2(PC_2), .instruction(instruction), .err(errF), 
-            .fetch_enable(fetch_enable), .createdump(createdump), .PC(PC)
+// fetch inputs
+wire [15:0] fin_next_PC;
+wire fin_fetch_enable;
+// fetch outputs
+wire [15:0] fout_next_PC, fout_PC_2, fout_instruction, fout_PC;
+
+fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
+             .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
+            .fetch_enable(fin_fetch_enable), .createdump(createdump), .PC(fout_PC)
             );
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
+// F/D flopped wires
 wire [15:0] fd_next_PC, fd_instruction, fd_PC_2, fd_PC;
 wire [2:0] fd_readReg1, fd_readReg2;
+// F/D mux wires
+wire [15:0] fd_mux_next_PC, fd_mux_instruction, fd_mux_PC_2, fd_mux_PC;
+wire [2:0] fd_mux_readReg1, fd_mux_readReg2;
+// F/D muxes
+assign fd_mux_next_PC = (FD_NOP) ? 4'h0000 : fout_next_PC;
+assign fd_mux_instruction = (FD_NOP) ? 4'h0000 : fout_instruction;
+assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : fout_PC_2;
+assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
+assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
+assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
 
-dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(next_PC), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(instruction), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(PC_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(PC), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(instruction[10:8]), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(instruction[7:5]), .clk(clk), .rst(rst));
+// F/D registers
+dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fd_mux_PC_2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fd_mux_PC), .clk(clk), .rst(rst));
 
 // Set control signals to 0 if FD_NOP = 1
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// decode inputs
+wire [15:0] write_data; // pretty sure needs to be flopped in F/D where input comes from WB instead of F
+
+// decode outputs
+wire dout_ALUSrc, dout_is_SLBI, dout_is_LBI, dout_MemRead, dout_MemWrite, dout_MemtoReg, dout_sign, dout_invA, dout_invB, dout_Cin, dout_fetch_enable, dout_is_branch, dout_RegWrite;
+wire [2:0] dout_PCSrc, dout_writeReg, dout_readReg1, dout_readReg2;
+wire [4:0] dout_ALUOp;
+wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, dout_PC_2_I, dout_PC_2_D
 
 decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction), 
-               .PC_2(fd_PC_2), .write_data(write_data), .read_data_1(read_data_1), 
-               .read_data_2(read_data_2), .Immd(Immd), .PC_2_I(PC_2_I), 
-               .PC_2_D(PC_2_D), .ALUSrc(ALUSrc), .is_SLBI(is_SLBI), 
-               .is_LBI(is_LBI), .MemRead(MemRead), .MemWrite(MemWrite), 
-               .MemtoReg(MemtoReg), .sign(sign), .invA(invA), 
-               .invB(invB), .Cin(Cin), .PCSrc(PCSrc), 
-               .ALUOp(ALUOp), .fetch_enable(fetch_enable), .is_branch(is_branch), 
-               .createdump(createdump), .err(err), .writeReg(writeReg), .readReg1(readReg1), .readReg2(readReg2), .RegWrite(RegWrite)
+               .PC_2(fd_PC_2), .write_data(write_data), .read_data_1(dout_read_data_1), 
+               .read_data_2(dout_read_data_2), .Immd(dout_Immd), .PC_2_I(dout_PC_2_I), 
+               .PC_2_D(dout_PC_2_D), .ALUSrc(dout_ALUSrc), .is_SLBI(dout_is_SLBI), 
+               .is_LBI(dout_is_LBI), .MemRead(dout_MemRead), .MemWrite(dout_MemWrite), 
+               .MemtoReg(dout_MemtoReg), .sign(dout_sign), .invA(dout_invA), 
+               .invB(dout_invB), .Cin(dout_Cin), .PCSrc(dout_PCSrc), 
+               .ALUOp(dout_ALUOp), .fetch_enable(dout_fetch_enable), .is_branch(dout_is_branch), 
+               .createdump(createdump), .err(err), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
+// D/E flopped wires
 wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D, de_Immd;
 wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg;
 
-dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(fd_next_PC), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_2), .d(read_data_1), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_read_data_2 (.q(de_read_data_2), .d(read_data_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_PC_2 (.q(de_PC_2), .d(fd_PC_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_PC_2_I (.q(de_PC_2_I), .d(PC_2_I), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_PC_2_D (.q(de_PC_2_D), .d(PC_2_D), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_Immd (.q(de_Immd), .d(Immd), .clk(clk), .rst(rst));
+// D/E mux wires
+wire [15:0] de_mux_next_PC, de_mux_read_data_1, de_mux_read_data_2, de_mux_PC_2, de_mux_PC_2_I, de_mux_PC_2_D, de_mux_Immd;
+
+// D/E muxes
+assign de_mux_next_PC = (DE_NOP) ? 4'h000 : fd_next_PC;
+assign de_mux_read_data_1 = (DE_NOP) ? 4'h000 : dout_read_data_1;
+assign de_mux_read_data_2 = (DE_NOP) ? 4'h000 : dout_read_data_2;
+assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : fd_PC_2;
+assign de_mux_PC_2_I = (DE_NOP) ? 4'h000 : dout_PC_2_I;
+assign de_mux_PC_2_D = (DE_NOP) ? 4'h000 : dout_PC_2_D;
+assign de_mux_Immd = (DE_NOP) ? 4'h000 : dout_Immd;
+
+// D/E registers
+dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(de_mux_next_PC), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_1), .d(de_mux_read_data_1), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_read_data_2 (.q(de_read_data_2), .d(de_mux_read_data_2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_PC_2 (.q(de_PC_2), .d(de_mux_PC_2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_PC_2_I (.q(de_PC_2_I), .d(de_mux_PC_2_I), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_PC_2_D (.q(de_PC_2_D), .d(de_mux_PC_2_D), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_Immd (.q(de_Immd), .d(de_mux_Immd), .clk(clk), .rst(rst));
+// TODO: paused muxing here
 dff_N #(.N(1)) reg_de_ALUSrc (.q(de_ALUSrc), .d(ALUSrc), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_invA(.q(de_invA), .d(invA), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_invB(.q(de_invB), .d(invB), .clk(clk), .rst(rst));
@@ -160,8 +194,6 @@ wb wb0(.ALU_result(mw_ALU_Result), .read_data(mw_read_data), .MemtoReg(mw_MemtoR
 assign err = errF | errD | errX | errM | errW;
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
-
-wire FD_NOP, DE_NOP, EM_NOP, MW_NOP;
 
 hazard h0(.clk(clk), .rst(rst), .PCSrc(PCSrc), .stall(createdump), .FD_NOP(FD_NOP), .DE_NOP(DE_NOP), .EM_NOP(EM_NOP), .MW_NOP(MW_NOP), 
 .ID_EX_MemRead(de_MemRead), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), 
