@@ -107,7 +107,7 @@ assign de_mux_read_data_2 = (DE_NOP) ? 4'h000 : dout_read_data_2;
 assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : fd_PC_2;
 assign de_mux_PC_2_I = (DE_NOP) ? 4'h000 : dout_PC_2_I;
 assign de_mux_PC_2_D = (DE_NOP) ? 4'h000 : dout_PC_2_D;
-assign de_mux_PC = = (DE_NOP) ? 4'h000 : fd_PC;
+assign de_mux_PC = (DE_NOP) ? 4'h000 : fd_PC;
 assign de_mux_Immd = (DE_NOP) ? 4'h000 : dout_Immd;
 assign de_mux_ALUSrc = (DE_NOP) ? 1'b0 : dout_ALUSrc;
 assign de_mux_invA = (DE_NOP) ? 1'b0 : dout_invA;
@@ -186,7 +186,7 @@ assign em_mux_MemWrite = (EM_NOP) ? 1'b0 : de_MemWrite;
 assign em_mux_MemtoReg = (EM_NOP) ? 1'b0 : de_MemtoReg;
 assign em_mux_RegWrite = (EM_NOP) ? 1'b0 : de_RegWrite;
 
-assign em_mux_ALU_Result (EM_NOP) ? 4'h0000 : ALU_Result;
+assign em_mux_ALU_Result = (EM_NOP) ? 4'h0000 : ALU_Result;
 assign em_mux_read_data_2 = (EM_NOP) ? 4'h0000 : de_read_data_2;
 assign em_mux_readReg1 = (EM_NOP) ? 3'b000 : de_readReg1;
 assign em_mux_readReg2 = (EM_NOP) ? 3'b000 : de_readReg2;
@@ -213,19 +213,29 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
                );
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
+// M/W flopped wires
 wire [15:0] mw_read_data, mw_ALU_Result;
 wire [2:0] mw_readReg1, mw_readReg2, mw_writeReg;
 wire mw_RegWrite, mw_MemtoReg;
 
-dff_N #(.N(16)) reg_mw_ALU_Result(.q(mw_ALU_Result), .d(em_ALU_Result), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(read_data), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_mw_MemtoReg(.q(mw_MemtoReg), .d(em_MemtoReg), .clk(clk), .rst(rst));
+// M/W mux wires
+wire [15:0] mw_mux_read_data, mw_mux_ALU_Result;
+wire mw_mux_MemtoReg;
+
+// M/W muxes
+// Set control signals to 0 if MW_NOP = 1
+assign mw_mux_ALU_Result = (MW_NOP) ? 4'h0000 : em_ALU_Result;
+assign mw_mux_read_data =  (MW_NOP) ? 4'h0000 : read_data;
+assign mw_mux_MemtoReg  =  (MW_NOP) ? 1'b0 : em_MemtoReg;
+
+// M/W registers
+dff_N #(.N(16)) reg_mw_ALU_Result(.q(mw_ALU_Result), .d(mw_mux_ALU_Result), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(mw_mux_read_data), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_mw_MemtoReg(.q(mw_MemtoReg), .d(mw_mux_MemtoReg), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_mw_reg_rs (.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg__mw_reg_rt (.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
-
-// Set control signals to 0 if MW_NOP = 1
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
