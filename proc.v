@@ -91,12 +91,13 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
 // D/E flopped wires
 wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D, de_Immd;
-wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
+wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite, de_MemWrite;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg;
 
 // D/E mux wires
 wire [15:0] de_mux_next_PC, de_mux_read_data_1, de_mux_read_data_2, de_mux_PC_2, de_mux_PC_2_I, de_mux_PC_2_D, de_mux_Immd;
-
+wire de_mux_ALUSrc, de_mux_invA, de_mux_invB, de_mux_sign, de_mux_Cin, de_mux_is_SLBI, de_mux_is_LBI, de_mux_MemRead, de_mux_MemtoReg, de_mux_RegWrite, de_mux_MemWrite;
+wire [2:0] de_mux_readReg1, de_mux_readReg1, de_mux_writeReg;
 // D/E muxes
 assign de_mux_next_PC = (DE_NOP) ? 4'h000 : fd_next_PC;
 assign de_mux_read_data_1 = (DE_NOP) ? 4'h000 : dout_read_data_1;
@@ -105,6 +106,20 @@ assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : fd_PC_2;
 assign de_mux_PC_2_I = (DE_NOP) ? 4'h000 : dout_PC_2_I;
 assign de_mux_PC_2_D = (DE_NOP) ? 4'h000 : dout_PC_2_D;
 assign de_mux_Immd = (DE_NOP) ? 4'h000 : dout_Immd;
+assign de_mux_ALUSrc = (DE_NOP) ? 1'b0 : dout_ALUSrc;
+assign de_mux_invA = (DE_NOP) ? 1'b0 : dout_invA;
+assign de_mux_invB = (DE_NOP) ? 1'b0 : dout_invB;
+assign de_mux_sign = (DE_NOP) ? 1'b0 : dout_sign;
+assign de_mux_Cin = (DE_NOP) ? 1'b0 : dout_Cin;
+assign de_mux_is_SLBI = (DE_NOP) ? 1'b0 : dout_is_SLBI;
+assign de_mux_is_LBI = (DE_NOP) ? 1'b0 : dout_is_LBI;
+assign de_mux_MemRead = (DE_NOP) ? 1'b0 : dout_MemRead;
+assign de_mux_MemtoReg = (DE_NOP) ? 1'b0 : dout_MemtoReg;
+assign de_mux_RegWrite = (DE_NOP) ? 1'b0 : dout_RegWrite;
+assign de_mux_MemWrite = (DE_NOP) ? 1'b0 : dout_MemWrite;
+assign de_mux_readReg1 = (DE_NOP) ? 3'b000 : dout_readReg1;
+assign de_mux_readReg2 = (DE_NOP) ? 3'b000 : dout_readReg2;
+assign de_mux_writeReg = (DE_NOP) ? 3'b000 : dout_writeReg;
 
 // D/E registers
 dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(de_mux_next_PC), .clk(clk), .rst(rst));
@@ -114,21 +129,20 @@ dff_N #(.N(16)) reg_de_PC_2 (.q(de_PC_2), .d(de_mux_PC_2), .clk(clk), .rst(rst))
 dff_N #(.N(16)) reg_de_PC_2_I (.q(de_PC_2_I), .d(de_mux_PC_2_I), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_PC_2_D (.q(de_PC_2_D), .d(de_mux_PC_2_D), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_Immd (.q(de_Immd), .d(de_mux_Immd), .clk(clk), .rst(rst));
-// TODO: paused muxing here
-dff_N #(.N(1)) reg_de_ALUSrc (.q(de_ALUSrc), .d(ALUSrc), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_invA(.q(de_invA), .d(invA), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_invB(.q(de_invB), .d(invB), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_sign(.q(de_sign), .d(sign), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_Cin(.q(de_Cin), .d(Cin), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_is_SLBI(.q(de_is_SLBI), .d(is_SLBI), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(is_LBI), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(MemRead), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(MemWrite), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_de_reg_rs (.q(de_readReg1), .d(fd_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_de_reg_rt (.q(de_readReg2), .d(fd_readReg2), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_de_reg_rd (.q(de_writeReg), .d(writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_reg_wr (.q(de_RegWrite), .d(RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_ALUSrc (.q(de_ALUSrc), .d(de_mux_ALUSrc), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_invA(.q(de_invA), .d(de_mux_invA), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_invB(.q(de_invB), .d(de_mux_invB), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_sign(.q(de_sign), .d(de_mux_sign), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_Cin(.q(de_Cin), .d(de_mux_Cin), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_is_SLBI(.q(de_is_SLBI), .d(de_mux_is_SLBI), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(de_mux_is_LBI), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(de_mux_MemRead), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(de_mux_MemtoReg), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_reg_wr (.q(de_RegWrite), .d(de_mux_RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(de_mux_MemWrite), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rs (.q(de_readReg1), .d(de_mux_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rt (.q(de_readReg2), .d(de_mux_readReg2), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rd (.q(de_writeReg), .d(de_mux_writeReg), .clk(clk), .rst(rst));
  
 
 // Set control signals to 0 if DE_NOP = 1
