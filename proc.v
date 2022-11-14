@@ -27,8 +27,7 @@ module proc (/*AUTOARG*/
 
 // Hazard signals
 wire FD_NOP, DE_NOP, EM_NOP, MW_NOP;
-// Inputs and outputs between sections
-wire [15:0] read_data, PC; 
+
 // errors
 wire errF, errD, errX, errM, errW;
 wire createdump;
@@ -170,24 +169,43 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
                  );
 
 ///////////////////////////////////////////////// E/M pipeline register ///////////////////////////////////////////////////////////////
-wire em_MemRead, em_MemWrite, em_MemtoReg;
+// E/M flopped wires
+wire em_MemRead, em_MemWrite, em_MemtoReg, em_RegWrite;
 wire [15:0] em_ALU_Result, em_read_data_2;
 wire [2:0] em_readReg1, em_readReg2, em_writeReg;
-wire em_RegWrite;
 
-dff_N #(.N(16)) reg_em_ALU_Result(.q(em_ALU_Result), .d(ALU_Result), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(de_MemRead), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_MemWrite(.q(em_MemWrite), .d(de_MemWrite), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_read_data_2(.q(em_read_data_2), .d(de_read_data_2), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_MemtoReg(.q(em_MemtoReg), .d(de_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_em_reg_rs (.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg__em_reg_rt (.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_em_reg_rd (.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst));
+// E/M mux wires
+wire em_mux_MemRead, em_mux_MemWrite, em_mux_MemtoReg, em_mux_RegWrite;
+wire [15:0] em_mux_ALU_Result, em_mux_read_data_2;
+wire [2:0] em_mux_readReg1, em_mux_readReg2, em_mux_writeReg;
 
+// E/M muxes
 // Set control signals to 0 if EM_NOP = 1
+assign em_mux_MemRead = (EM_NOP) ? 1'b0 : de_MemRead;
+assign em_mux_MemWrite = (EM_NOP) ? 1'b0 : de_MemWrite;
+assign em_mux_MemtoReg = (EM_NOP) ? 1'b0 : de_MemtoReg;
+assign em_mux_RegWrite = (EM_NOP) ? 1'b0 : de_RegWrite;
+
+assign em_mux_ALU_Result (EM_NOP) ? 4'h0000 : ALU_Result;
+assign em_mux_read_data_2 = (EM_NOP) ? 4'h0000 : de_read_data_2;
+assign em_mux_readReg1 = (EM_NOP) ? 3'b000 : de_readReg1;
+assign em_mux_readReg2 = (EM_NOP) ? 3'b000 : de_readReg2;
+assign em_mux_writeReg = (EM_NOP) ? 3'b000 : de_writeReg;
+
+// E/M registers
+dff_N #(.N(16)) reg_em_ALU_Result(.q(em_ALU_Result), .d(em_mux_ALU_Result), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(em_mux_MemRead), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_em_MemWrite(.q(em_MemWrite), .d(em_mux_MemWrite), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_em_read_data_2(.q(em_read_data_2), .d(em_mux_read_data_2), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_em_MemtoReg(.q(em_MemtoReg), .d(em_mux_MemtoReg), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_em_reg_rs (.q(em_readReg1), .d(em_mux_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg__em_reg_rt (.q(em_readReg2), .d(em_mux_readReg2), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_em_reg_rd (.q(em_writeReg), .d(em_mux_writeReg), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(em_mux_RegWrite), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// memory outputs
+wire [15:0] read_data;
 
 memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
                .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), 
