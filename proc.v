@@ -28,10 +28,11 @@ module proc (/*AUTOARG*/
 wire is_branch, RegWrite, SignExt, ImmdSrc, ALUSrc, is_SLBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, is_LBI, fetch_enable,
 createdump;
 wire [4:0] ALUOp;
-wire [1:0] PCSrc, RegDst;
+wire [1:0] RegDst;
+wire [2:0] PCSrc;
 
 // Inputs and outputs between sections
-wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC, 
+wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC; 
 wire [2:0] writeReg, readReg1, readReg2;  
 
 // errors
@@ -50,8 +51,8 @@ dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(next_PC), .clk(clk), .rst(rst
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(instruction), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(PC_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(PC), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_readReg1 (.q(fd_readReg1), .d(instruction[10:8]), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_readReg2 (.q(fd_readReg2), .d(instruction[7:5]), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(instruction[10:8]), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(instruction[7:5]), .clk(clk), .rst(rst));
 
 // Set control signals to 0 if FD_NOP = 1
 
@@ -69,8 +70,8 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
-wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D;
-wire de_Immd, de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
+wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D, de_Immd;
+wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg;
 
 dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(fd_next_PC), .clk(clk), .rst(rst));
@@ -90,10 +91,10 @@ dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(is_LBI), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(MemRead), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_reg_rs (.q(de_readReg1), .d(fd_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_reg_rt (.q(de_readReg2), .d(fd_readReg2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_reg_rd (.q(de_writeReg), .d(writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_reg_wr (.q(de_RegWrite), .d(RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rs (.q(de_readReg1), .d(fd_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rt (.q(de_readReg2), .d(fd_readReg2), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rd (.q(de_writeReg), .d(writeReg), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_de_reg_wr (.q(de_RegWrite), .d(RegWrite), .clk(clk), .rst(rst));
  
 
 // Set control signals to 0 if DE_NOP = 1
@@ -110,8 +111,8 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
                  );
 
 ///////////////////////////////////////////////// E/M pipeline register ///////////////////////////////////////////////////////////////
-wire em_MemRead, em_MemWrite, em_read_data_2, em_MemtoReg;
-wire [15:0] em_ALU_Result;
+wire em_MemRead, em_MemWrite, em_MemtoReg;
+wire [15:0] em_ALU_Result, em_read_data_2;
 wire [2:0] em_readReg1, em_readReg2, em_writeReg;
 wire em_RegWrite;
 
@@ -120,10 +121,10 @@ dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(de_MemRead), .clk(clk), .rst(rs
 dff_N #(.N(1)) reg_em_MemWrite(.q(em_MemWrite), .d(de_MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_read_data_2(.q(em_read_data_2), .d(de_read_data_2), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_MemtoReg(.q(em_MemtoReg), .d(de_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_em_reg_rs (.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg__em_reg_rt (.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_em_reg_rd (.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_em_reg_rs (.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg__em_reg_rt (.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_em_reg_rd (.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst));
 
 // Set control signals to 0 if EM_NOP = 1
 
@@ -135,17 +136,17 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
                );
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
-wire [15:0] mw_read_data, mw_ALU_Result, mw_MemtoReg;
+wire [15:0] mw_read_data, mw_ALU_Result;
 wire [2:0] mw_readReg1, mw_readReg2, mw_writeReg;
-wire mw_RegWrite;
+wire mw_RegWrite, mw_MemtoReg;
 
 dff_N #(.N(16)) reg_mw_ALU_Result(.q(mw_ALU_Result), .d(em_ALU_Result), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(read_data), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_MemtoReg(.q(mw_MemtoReg), .d(em_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_reg_rs (.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg__mw_reg_rt (.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_mw_reg_rs (.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg__mw_reg_rt (.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
 
 // Set control signals to 0 if MW_NOP = 1
 

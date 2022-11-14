@@ -36,7 +36,11 @@ assign bypass1Sel = writeEn & reg1same;
 assign bypass2Sel = writeEn & reg2same;
 
 // If the same registers, read before write 
-mux2_1 f1(.out(read1Data), .inA(read1DataTemp), .inB(writeData), .s(bypass1Sel));
-mux2_1 f2(.out(read2Data), .inA(read2DataTemp), .inB(writeData), .s(bypass2Sel));
+// mux2_1 f1(.out(read1Data), .inA(read1DataTemp), .inB(writeData), .s(bypass1Sel));
+
+assign read1Data = (bypass1Sel == 1'b1) ? read1DataTemp: writeData;
+
+// mux2_1 f2(.out(read2Data), .inA(read2DataTemp), .inB(writeData), .s(bypass2Sel));
+assign read2Data = (bypass2Sel == 1'b1) ? read2DataTemp: writeData;
 
 endmodule

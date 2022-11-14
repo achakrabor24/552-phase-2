@@ -13,12 +13,14 @@ module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2,
 
 	output [15:0] read_data_1, read_data_2, Immd, PC_2_I, PC_2_D;
 	output err;
+
 	// control outputs
 	output ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, RegWrite, sign, invA, invB, Cin, PCSrc, fetch_enable, is_branch, createdump;
 	output [4:0] ALUOp;
+	output [2:0] PCSrc;
 
 	// register values
-	output [15:0] writeReg, readReg1, readReg2;
+	output [2:0] writeReg, readReg1, readReg2;
 
 	wire [15:0] write_data_temp, I1, I2, J;
 	wire [2:0] writeRegSel_temp;
