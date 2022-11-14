@@ -32,7 +32,7 @@ wire [1:0] PCSrc, RegDst;
 
 // Inputs and outputs between sections
 wire [15:0] PC_2, next_PC, instruction, write_data, Immd, read_data_1, read_data_2, ALU_Result, read_data, PC_2_I, PC_2_D, PC, 
-writeReg, readReg1, readReg2;  
+wire [2:0] writeReg, readReg1, readReg2;  
 
 // errors
 wire errF, errD, errX, errM, errW;
