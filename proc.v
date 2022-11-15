@@ -61,7 +61,7 @@ wire [2:0] fd_mux_readReg1, fd_mux_readReg2;
 
 // F/D muxes
 // Set control signals to 0 if FD_NOP = 1
-assign fd_mux_instruction = (FD_NOP) ? 4'h0000 : fout_instruction;
+assign fd_mux_instruction = (FD_NOP) ? 16'b0000100000000000 : (rst) ? 16'b0000100000000000 : fout_instruction;
 assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : fout_PC_2;
 assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
 assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
@@ -69,7 +69,7 @@ assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
 assign fd_mux_next_PC = FD_NOP ? 3'b000 : de_next_PC;
 
 // F/D registers
-dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
+dff_16 reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fd_mux_PC_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fd_mux_PC), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
