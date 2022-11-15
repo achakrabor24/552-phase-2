@@ -34,22 +34,24 @@ wire createdump;
 
 // fetch inputs
 wire [15:0] fin_next_PC;
+wire [15:0] de_next_PC, fd_next_PC;
+
 
 // fetch outputs
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
-wire createdump_dummy;
+// wire createdump_dummy;
 
 // assign createdump_dummy = createdump;
-assign createdump = MW_NOP;
+// assign createdump = MW_NOP;
 
-fetch fetch0(.next_PC(de_next_PC), .clk(clk), .rst(rst), 
+fetch fetch0(.next_PC(fd_next_PC), .clk(clk), .rst(rst), 
              .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
             .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
             );
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 // F/D flopped wires
-wire [15:0] fd_instruction, fd_PC_2, fd_PC, fd_next_PC;
+wire [15:0] fd_instruction, fd_PC_2, fd_PC;
 wire [2:0] fd_readReg1, fd_readReg2;
 
 
@@ -64,13 +66,13 @@ assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : fout_PC_2;
 assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
 assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
 assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
-// assign fd_mux_next_PC = FD_NOP ? 3'b000 : fin_next_PC;
+assign fd_mux_next_PC = FD_NOP ? 3'b000 : de_next_PC;
 
 // F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fd_mux_PC_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fd_mux_PC), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(fd_mux_readReg1), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(fd_mux_readReg2), .clk(clk), .rst(rst));
 
@@ -92,7 +94,7 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                .MemtoReg(dout_MemtoReg), .sign(dout_sign), .invA(dout_invA), 
                .invB(dout_invB), .Cin(dout_Cin), .PCSrc(dout_PCSrc), 
                .ALUOp(dout_ALUOp), .fetch_enable(dout_fetch_enable), .is_branch(dout_is_branch), 
-               .createdump(createdump_dummy), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
+               .createdump(createdump), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
