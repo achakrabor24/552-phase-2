@@ -34,22 +34,23 @@ wire createdump;
 
 // fetch inputs
 wire [15:0] fin_next_PC;
-wire fin_fetch_enable;
+
 // fetch outputs
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
 
 fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
              .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
-            .fetch_enable(fin_fetch_enable), .createdump(createdump), .PC(fout_PC)
+            .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
             );
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 // F/D flopped wires
-wire [15:0] fd_instruction, fd_PC_2, fd_PC;
+wire [15:0] fd_instruction, fd_PC_2, fd_PC, fd_next_PC;
 wire [2:0] fd_readReg1, fd_readReg2;
 
+
 // F/D mux wires
-wire [15:0] fd_mux_instruction, fd_mux_PC_2, fd_mux_PC;
+wire [15:0] fd_mux_instruction, fd_mux_PC_2, fd_mux_PC, fd_mux_next_PC;
 wire [2:0] fd_mux_readReg1, fd_mux_readReg2;
 
 // F/D muxes
@@ -59,11 +60,15 @@ assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : fout_PC_2;
 assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
 assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
 assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
+assign fd_mux_next_PC = FD_NOP ? 3'b000 : fin_next_PC;
 
 // F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fd_mux_PC_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fd_mux_PC), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(fd_mux_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(fd_mux_readReg2), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // decode inputs
@@ -73,7 +78,7 @@ wire [15:0] write_data; // pretty sure needs to be flopped in F/D where input co
 wire dout_ALUSrc, dout_is_SLBI, dout_is_LBI, dout_MemRead, dout_MemWrite, dout_MemtoReg, dout_sign, dout_invA, dout_invB, dout_Cin, dout_fetch_enable, dout_is_branch, dout_RegWrite;
 wire [2:0] dout_PCSrc, dout_writeReg, dout_readReg1, dout_readReg2;
 wire [4:0] dout_ALUOp;
-wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, dout_PC_2_I, dout_PC_2_D
+wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, dout_PC_2_I, dout_PC_2_D;
 
 decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction), 
                .PC_2(fd_PC_2), .write_data(write_data), .read_data_1(dout_read_data_1), 
@@ -83,7 +88,7 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                .MemtoReg(dout_MemtoReg), .sign(dout_sign), .invA(dout_invA), 
                .invB(dout_invB), .Cin(dout_Cin), .PCSrc(dout_PCSrc), 
                .ALUOp(dout_ALUOp), .fetch_enable(dout_fetch_enable), .is_branch(dout_is_branch), 
-               .createdump(createdump), .err(err), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
+               .createdump(createdump), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
@@ -96,7 +101,7 @@ wire [4:0] de_ALUOp;
 // D/E mux wires
 wire [15:0] de_mux_next_PC, de_mux_read_data_1, de_mux_read_data_2, de_mux_PC_2, de_mux_PC_2_I, de_mux_PC_2_D, de_mux_PC, de_mux_Immd;
 wire de_mux_ALUSrc, de_mux_invA, de_mux_invB, de_mux_sign, de_mux_Cin, de_mux_is_SLBI, de_mux_is_LBI, de_mux_MemRead, de_mux_MemtoReg, de_mux_RegWrite, de_mux_MemWrite, de_mux_is_branch;
-wire [2:0] de_mux_readReg1, de_mux_readReg1, de_mux_writeReg, de_mux_PCSrc;
+wire [2:0] de_mux_readReg1, de_mux_readReg2, de_mux_writeReg, de_mux_PCSrc;
 wire [4:0] de_mux_ALUOp;
 
 // D/E muxes 
@@ -196,7 +201,7 @@ assign em_mux_writeReg = (EM_NOP) ? 3'b000 : de_writeReg;
 dff_N #(.N(16)) reg_em_ALU_Result(.q(em_ALU_Result), .d(em_mux_ALU_Result), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(em_mux_MemRead), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_MemWrite(.q(em_MemWrite), .d(em_mux_MemWrite), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_read_data_2(.q(em_read_data_2), .d(em_mux_read_data_2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_em_read_data_2(.q(em_read_data_2), .d(em_mux_read_data_2), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_MemtoReg(.q(em_MemtoReg), .d(em_mux_MemtoReg), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_em_reg_rs (.q(em_readReg1), .d(em_mux_readReg1), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg__em_reg_rt (.q(em_readReg2), .d(em_mux_readReg2), .clk(clk), .rst(rst));
