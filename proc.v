@@ -37,10 +37,14 @@ wire [15:0] fin_next_PC;
 
 // fetch outputs
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
+wire createdump_dummy;
 
-fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
+// assign createdump_dummy = createdump;
+assign createdump = MW_NOP;
+
+fetch fetch0(.next_PC(de_next_PC), .clk(clk), .rst(rst), 
              .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
-            .fetch_enable(1'b1), .createdump(MW_NOP), .PC(fout_PC)
+            .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
             );
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
@@ -60,13 +64,13 @@ assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : fout_PC_2;
 assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
 assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
 assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
-assign fd_mux_next_PC = FD_NOP ? 3'b000 : fin_next_PC;
+// assign fd_mux_next_PC = FD_NOP ? 3'b000 : fin_next_PC;
 
 // F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fd_mux_PC_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fd_mux_PC), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
+// dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fd_mux_next_PC), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(fd_mux_readReg1), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(fd_mux_readReg2), .clk(clk), .rst(rst));
 
@@ -88,15 +92,17 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                .MemtoReg(dout_MemtoReg), .sign(dout_sign), .invA(dout_invA), 
                .invB(dout_invB), .Cin(dout_Cin), .PCSrc(dout_PCSrc), 
                .ALUOp(dout_ALUOp), .fetch_enable(dout_fetch_enable), .is_branch(dout_is_branch), 
-               .createdump(createdump), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
+               .createdump(createdump_dummy), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
 // D/E flopped wires
-wire [15:0] de_next_PC, de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D, de_PC, de_Immd;
+wire [15:0] de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D, de_PC, de_Immd;
 wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite, de_MemWrite, de_is_branch;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg, de_PCSrc;
 wire [4:0] de_ALUOp;
+
+wire [15:0] next_PC;
 
 // D/E mux wires
 wire [15:0] de_mux_next_PC, de_mux_read_data_1, de_mux_read_data_2, de_mux_PC_2, de_mux_PC_2_I, de_mux_PC_2_D, de_mux_PC, de_mux_Immd;
@@ -106,7 +112,7 @@ wire [4:0] de_mux_ALUOp;
 
 // D/E muxes 
 // Set control signals to 0 if DE_NOP = 1
-assign de_mux_next_PC = (DE_NOP) ? 4'h000 : fd_next_PC;
+assign de_mux_next_PC = (DE_NOP) ? 4'h000 : next_PC;
 assign de_mux_read_data_1 = (DE_NOP) ? 4'h000 : dout_read_data_1;
 assign de_mux_read_data_2 = (DE_NOP) ? 4'h000 : dout_read_data_2;
 assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : fd_PC_2;
@@ -169,7 +175,7 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
                  .ALUSrc(de_ALUSrc), .invA(de_invA), .invB(de_invB), 
                  .sign(de_sign), .Cin(de_Cin), .is_LBI(de_is_LBI), 
                  .is_SLBI(de_is_SLBI), .PCSrc(de_PCSrc), .ALUOp(de_ALUOp), 
-                 .next_PC(de_next_PC), .ALU_Result_out(ALU_Result), .err(errX), 
+                 .next_PC(next_PC), .ALU_Result_out(ALU_Result), .err(errX), 
                  .is_branch(de_is_branch), .PC(de_PC)
                  );
 
