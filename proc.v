@@ -40,7 +40,7 @@ wire [15:0] fout_PC_2, fout_instruction, fout_PC;
 
 fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
              .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
-            .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
+            .fetch_enable(1'b1), .createdump(MW_NOP), .PC(fout_PC)
             );
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
@@ -253,7 +253,7 @@ assign err = errF | errD | errX | errM | errW;
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
 
-hazard h0(.clk(clk), .rst(rst), .PCSrc(PCSrc), .stall(createdump), .FD_NOP(FD_NOP), .DE_NOP(DE_NOP), .EM_NOP(EM_NOP), .MW_NOP(MW_NOP), 
+hazard h0(.clk(clk), .rst(rst), .PCSrc(de_PCSrc), .stall(createdump), .FD_NOP(FD_NOP), .DE_NOP(DE_NOP), .EM_NOP(EM_NOP), .MW_NOP(MW_NOP), 
 .ID_EX_MemRead(de_MemRead), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), 
 .EX_MEM_RegWrite(em_RegWrite), .EX_MEM_RegisterRd(em_writeReg), .MEM_WB_RegWrite(mw_RegWrite), .MEM_WB_RegisterRd(mw_writeReg));
    
