@@ -798,7 +798,6 @@ default: begin
 
 // NOP
 	RegWrite_temp = 1'b0;
-	PCSrc_temp = 3'b100; // CurrPC -> next_PC
 
 end
 
