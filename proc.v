@@ -37,16 +37,16 @@ wire errF, errD, errX, errM, errW;
 wire createdump;
 
 // fetch inputs
-// wire [15:0] fin_next_PC;
+wire [15:0] fin_next_PC;
 wire [15:0] de_next_PC, fd_next_PC;
 
 
 // fetch outputs
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
-
+wire [15:0] fin_next_PC;
 
 // Not connecting to next_PC correctly
-fetch fetch0(.next_PC(fd_next_PC), .clk(clk), .rst(rst), 
+fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
              .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
             .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
             );
@@ -57,28 +57,13 @@ wire [15:0] fd_instruction, fd_PC_2, fd_PC;
 wire [2:0] fd_readReg1, fd_readReg2;
 
 
-// F/D mux wires
-// wire [15:0] fd_mux_instruction, fd_mux_PC_2, fd_mux_PC, fd_mux_next_PC;
-// wire [2:0] fd_mux_readReg1, fd_mux_readReg2;
-// assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
-// assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
-// assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
-// assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : (retain_fd_value) ? fd_PC_2 : fout_PC_2;
-
-
 // F/D muxes
-// Set control signals to 0 if FD_NOP = 1
 assign fd_mux_instruction = (insert_nop) ? 16'b0000100000000000 : (rst) ? 16'b0000100000000000 : fout_instruction;
-// assign fd_mux_instruction = (rst) ? 16'b0000100000000000 : fout_instruction;
-
-// Pause/loop the PC when insert_nop = 1
-// assign fd_mux_next_PC = (insert_nop) ? fout_PC : de_next_PC;
 
 // F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fout_PC_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fd_mux_PC), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fout_next_PC), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fout_PC), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(fout_instruction[10:8]), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(fout_instruction[7:5]), .clk(clk), .rst(rst));
 
@@ -112,7 +97,6 @@ wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_Mem
 wire [2:0] de_readReg1, de_readReg2, de_writeReg, de_PCSrc;
 wire [4:0] de_ALUOp;
 
-wire [15:0] next_PC;
 
 // D/E mux wires
 wire [15:0] de_mux_next_PC, de_mux_read_data_1, de_mux_read_data_2, de_mux_PC_2, de_mux_PC_2_I, de_mux_PC_2_D, de_mux_PC, de_mux_Immd;
@@ -121,17 +105,6 @@ de_mux_RegWrite, de_mux_MemWrite, de_mux_is_branch, de_mux_stall;
 wire [2:0] de_mux_readReg1, de_mux_readReg2, de_mux_writeReg, de_mux_PCSrc;
 wire [4:0] de_mux_ALUOp;
 
-// Force hold current PC
-// Like TA said, recycle value by getting from the previous stage. 
-assign de_mux_next_PC = (insert_nop) ? fd_PC : next_PC;
-
-// assign de_mux_read_data_1 = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_read_data_1 : dout_read_data_1;
-// assign de_mux_read_data_2 = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_read_data_1 : dout_read_data_2;
-// assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC_2 : fd_PC_2;
-// assign de_mux_PC_2_I = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC_2_I : dout_PC_2_I;
-// assign de_mux_PC_2_D = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC_2_D : dout_PC_2_D;
-// assign de_mux_PC = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC: fd_PC;
-// assign de_mux_Immd = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_Immd : dout_Immd;
 
 // Control signals: Set control signals to 0 if insert_nop = 1  
 assign de_mux_ALUSrc = (insert_nop) ? 1'b0 : dout_ALUSrc;
@@ -146,13 +119,9 @@ assign de_mux_MemtoReg = (insert_nop) ? 1'b0 : dout_MemtoReg;
 assign de_mux_RegWrite = (insert_nop) ? 1'b0 : dout_RegWrite;
 assign de_mux_MemWrite = (insert_nop) ? 1'b0 : dout_MemWrite;
 assign de_mux_is_branch = (insert_nop) ? 1'b0 : dout_is_branch;
-assign de_mux_PCSrc = (insert_nop) ? 3'b000 : dout_PCSrc; // take care of next_PC = PC to loop by fetch
+assign de_mux_PCSrc = (insert_nop) ? 3'b100 : dout_PCSrc; // Give next_PC the current PC
 assign de_mux_ALUOp = (insert_nop) ? 5'b00000 : dout_ALUOp; // not sure if this should be something else
 
-// Don't need this, saying every register is r0
-// assign de_mux_readReg1 = (DE_NOP) ? 3'b000 :  dout_readReg1;
-// assign de_mux_readReg2 = (DE_NOP) ? 3'b000 :  dout_readReg2;
-// assign de_mux_writeReg = (DE_NOP) ? 3'b000 :  dout_writeReg;
 
 // D/E registers
 
@@ -173,7 +142,7 @@ dff_N #(.N(3)) reg_de_PCSrc (.q(de_PCSrc), .d(de_mux_PCSrc), .clk(clk), .rst(rst
 dff_N #(.N(5)) reg_de_ALUOp (.q(de_ALUOp), .d(de_mux_ALUOp), .clk(clk), .rst(rst));
 
 // PC value
-dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(de_mux_next_PC), .clk(clk), .rst(rst));
+// dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(de_mux_next_PC), .clk(clk), .rst(rst));
 
 // Doesn't need to be muxed, just passed through the pipeline
 dff_N #(.N(3)) reg_de_reg_rs (.q(de_readReg1), .d(dout_readReg1), .clk(clk), .rst(rst));
@@ -197,7 +166,7 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
                  .ALUSrc(de_ALUSrc), .invA(de_invA), .invB(de_invB), 
                  .sign(de_sign), .Cin(de_Cin), .is_LBI(de_is_LBI), 
                  .is_SLBI(de_is_SLBI), .PCSrc(de_PCSrc), .ALUOp(de_ALUOp), 
-                 .next_PC(next_PC), .ALU_Result_out(ALU_Result), .err(errX), 
+                 .next_PC(fin_next_PC), .ALU_Result_out(ALU_Result), .err(errX), 
                  .is_branch(de_is_branch), .PC(de_PC)
                  );
 
