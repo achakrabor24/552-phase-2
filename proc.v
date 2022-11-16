@@ -26,7 +26,10 @@ module proc (/*AUTOARG*/
 
 
 // Hazard signals
-wire FD_NOP, DE_NOP, EM_NOP, MW_NOP;
+wire FD_NOP, DE_NOP, EM_NOP, MW_NOP, insert_nop;
+
+// Recycle signals
+wire retain_fd_value, retain_de_value;
 
 // errors
 wire errF, errD, errX, errM, errW;
@@ -39,10 +42,7 @@ wire [15:0] de_next_PC, fd_next_PC;
 
 // fetch outputs
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
-// wire createdump_dummy;
-
-// assign createdump_dummy = createdump;
-// assign createdump = MW_NOP;
+wire de_stall;
 
 fetch fetch0(.next_PC(fd_next_PC), .clk(clk), .rst(rst), 
              .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
@@ -61,12 +61,16 @@ wire [2:0] fd_mux_readReg1, fd_mux_readReg2;
 
 // F/D muxes
 // Set control signals to 0 if FD_NOP = 1
-assign fd_mux_instruction = (FD_NOP) ? 16'b0000100000000000 : (rst) ? 16'b0000100000000000 : fout_instruction;
-assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : fout_PC_2;
+assign fd_mux_instruction = (FD_NOP) ? 16'b0000100000000000 : (rst) ? 16'b0000100000000000 : (retain_fd_value) ? fd_instruction : fout_instruction;
+assign fd_mux_PC_2 = (FD_NOP) ? 4'h0000 : (retain_fd_value) ? fd_PC_2 : fout_PC_2;
+
+// Pause/loop the PC when insert_nop = 1
+assign fd_mux_next_PC = (insert_nop) ? fout_PC : de_next_PC;
+
 assign fd_mux_PC = (FD_NOP) ? 4'h0000 : fout_PC;
 assign fd_mux_readReg1 = (FD_NOP) ? 3'b000 : fout_instruction[10:8];
 assign fd_mux_readReg2 = (FD_NOP) ? 3'b000 : fout_instruction[7:5];
-assign fd_mux_next_PC = FD_NOP ? 3'b000 : de_next_PC;
+
 
 // F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
@@ -81,7 +85,8 @@ dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(fd_mux_readReg2), .clk(clk),
 wire [15:0] write_data; // pretty sure needs to be flopped in F/D where input comes from WB instead of F
 
 // decode outputs
-wire dout_ALUSrc, dout_is_SLBI, dout_is_LBI, dout_MemRead, dout_MemWrite, dout_MemtoReg, dout_sign, dout_invA, dout_invB, dout_Cin, dout_fetch_enable, dout_is_branch, dout_RegWrite;
+wire dout_ALUSrc, dout_is_SLBI, dout_is_LBI, dout_MemRead, dout_MemWrite, dout_MemtoReg, dout_sign, dout_invA, dout_invB, dout_Cin, 
+dout_fetch_enable, dout_is_branch, dout_RegWrite;
 wire [2:0] dout_PCSrc, dout_writeReg, dout_readReg1, dout_readReg2;
 wire [4:0] dout_ALUOp;
 wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, dout_PC_2_I, dout_PC_2_D;
@@ -94,7 +99,8 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                .MemtoReg(dout_MemtoReg), .sign(dout_sign), .invA(dout_invA), 
                .invB(dout_invB), .Cin(dout_Cin), .PCSrc(dout_PCSrc), 
                .ALUOp(dout_ALUOp), .fetch_enable(dout_fetch_enable), .is_branch(dout_is_branch), 
-               .createdump(createdump), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), .RegWrite(dout_RegWrite)
+               .createdump(createdump), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), 
+		.RegWrite(dout_RegWrite), .stall(dout_stall)
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
@@ -108,37 +114,45 @@ wire [15:0] next_PC;
 
 // D/E mux wires
 wire [15:0] de_mux_next_PC, de_mux_read_data_1, de_mux_read_data_2, de_mux_PC_2, de_mux_PC_2_I, de_mux_PC_2_D, de_mux_PC, de_mux_Immd;
-wire de_mux_ALUSrc, de_mux_invA, de_mux_invB, de_mux_sign, de_mux_Cin, de_mux_is_SLBI, de_mux_is_LBI, de_mux_MemRead, de_mux_MemtoReg, de_mux_RegWrite, de_mux_MemWrite, de_mux_is_branch;
+wire de_mux_ALUSrc, de_mux_invA, de_mux_invB, de_mux_sign, de_mux_Cin, de_mux_is_SLBI, de_mux_is_LBI, de_mux_MemRead, de_mux_MemtoReg, 
+de_mux_RegWrite, de_mux_MemWrite, de_mux_is_branch, de_mux_stall;
 wire [2:0] de_mux_readReg1, de_mux_readReg2, de_mux_writeReg, de_mux_PCSrc;
 wire [4:0] de_mux_ALUOp;
 
-// D/E muxes 
-// Set control signals to 0 if DE_NOP = 1
-assign de_mux_next_PC = (DE_NOP) ? 4'h000 : next_PC;
-assign de_mux_read_data_1 = (DE_NOP) ? 4'h000 : dout_read_data_1;
-assign de_mux_read_data_2 = (DE_NOP) ? 4'h000 : dout_read_data_2;
-assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : fd_PC_2;
-assign de_mux_PC_2_I = (DE_NOP) ? 4'h000 : dout_PC_2_I;
-assign de_mux_PC_2_D = (DE_NOP) ? 4'h000 : dout_PC_2_D;
-assign de_mux_PC = (DE_NOP) ? 4'h000 : fd_PC;
-assign de_mux_Immd = (DE_NOP) ? 4'h000 : dout_Immd;
-assign de_mux_ALUSrc = (DE_NOP) ? 1'b0 : dout_ALUSrc;
-assign de_mux_invA = (DE_NOP) ? 1'b0 : dout_invA;
-assign de_mux_invB = (DE_NOP) ? 1'b0 : dout_invB;
-assign de_mux_sign = (DE_NOP) ? 1'b0 : dout_sign;
-assign de_mux_Cin = (DE_NOP) ? 1'b0 : dout_Cin;
-assign de_mux_is_SLBI = (DE_NOP) ? 1'b0 : dout_is_SLBI;
-assign de_mux_is_LBI = (DE_NOP) ? 1'b0 : dout_is_LBI;
-assign de_mux_MemRead = (DE_NOP) ? 1'b0 : dout_MemRead;
-assign de_mux_MemtoReg = (DE_NOP) ? 1'b0 : dout_MemtoReg;
-assign de_mux_RegWrite = (DE_NOP) ? 1'b0 : dout_RegWrite;
-assign de_mux_MemWrite = (DE_NOP) ? 1'b0 : dout_MemWrite;
-assign de_mux_is_branch = (DE_NOP) ? 1'b0 : dout_is_branch;
-assign de_mux_readReg1 = (DE_NOP) ? 3'b000 : dout_readReg1;
-assign de_mux_readReg2 = (DE_NOP) ? 3'b000 : dout_readReg2;
-assign de_mux_writeReg = (DE_NOP) ? 3'b000 : dout_writeReg;
-assign de_mux_PCSrc = (DE_NOP) ? 3'b000 : dout_PCSrc;
-assign de_mux_ALUOp = (DE_NOP) ? 5'b00000 : dout_ALUOp;
+// D/E muxes   
+
+assign de_mux_next_PC = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_next_PC: next_PC;
+
+// Need to recycle these signals
+assign de_mux_read_data_1 = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_read_data_1 : dout_read_data_1;
+assign de_mux_read_data_2 = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_read_data_1 : dout_read_data_2;
+
+assign de_mux_PC_2 = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC_2 : fd_PC_2;
+assign de_mux_PC_2_I = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC_2_I : dout_PC_2_I;
+assign de_mux_PC_2_D = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC_2_D : dout_PC_2_D;
+assign de_mux_PC = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_PC: fd_PC;
+assign de_mux_Immd = (DE_NOP) ? 4'h000 : (retain_de_value) ? de_Immd : dout_Immd;
+
+// Control signals: Set control signals to 0 if insert_nop = 1  
+assign de_mux_RegWrite = (insert_nop) 
+assign de_mux_ALUSrc = (insert_nop) ? 1'b0 : (retain_de_value) ? de_ALUSrc : dout_ALUSrc;
+assign de_mux_invA = (insert_nop) ? 1'b0 : (retain_de_value) ? de_invA :dout_invA;
+assign de_mux_invB = (insert_nop) ? 1'b0 : (retain_de_value) ? de_invB : dout_invB;
+assign de_mux_sign = (insert_nop) ? 1'b0 : (retain_de_value) ? de_sign : dout_sign;
+assign de_mux_Cin = (insert_nop) ? 1'b0 : (retain_de_value) ? de_Cin : dout_Cin;
+assign de_mux_is_SLBI = (insert_nop) ? 1'b0 : (retain_de_value) ? de_is_SLBI :dout_is_SLBI;
+assign de_mux_is_LBI = (insert_nop) ? 1'b0 : (retain_de_value) ? de_is_LBI: dout_is_LBI;
+assign de_mux_MemRead = (insert_nop) ? 1'b0 : (retain_de_value) ? de_MemRead : dout_MemRead;
+assign de_mux_MemtoReg = (insert_nop) ? 1'b0 : (retain_de_value) ? de_MemtoReg: dout_MemtoReg;
+assign de_mux_RegWrite = (insert_nop) ? 1'b0 : (retain_de_value) ? de_RegWrite: dout_RegWrite;
+assign de_mux_MemWrite = (insert_nop) ? 1'b0 : (retain_de_value) ? de_MemWrite: dout_MemWrite;
+assign de_mux_is_branch = (insert_nop) ? 1'b0 : (retain_de_value) ? de_is_branch : dout_is_branch;
+assign de_mux_PCSrc = (insert_nop) ? 3'b000 : (retain_de_value) ? de_PCSrc : dout_PCSrc;
+assign de_mux_ALUOp = (insert_nop) ? 5'b00000 : (retain_de_value) ? de_ALUOp : dout_ALUOp;
+
+assign de_mux_readReg1 = (DE_NOP) ? 3'b000 : (retain_de_value) ? de_readReg1 : dout_readReg1;
+assign de_mux_readReg2 = (DE_NOP) ? 3'b000 : (retain_de_value) ? de_readReg2 : dout_readReg2;
+assign de_mux_writeReg = (DE_NOP) ? 3'b000 : (retain_de_value) ? de_writeReg: dout_writeReg;
 
 // D/E registers
 dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(de_mux_next_PC), .clk(clk), .rst(rst));
@@ -261,9 +275,11 @@ assign err = errF | errD | errX | errM | errW;
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
 
-hazard h0(.clk(clk), .rst(rst), .PCSrc(de_PCSrc), .stall(createdump), .FD_NOP(FD_NOP), .DE_NOP(DE_NOP), .EM_NOP(EM_NOP), .MW_NOP(MW_NOP), 
-.ID_EX_MemRead(de_MemRead), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), 
-.EX_MEM_RegWrite(em_RegWrite), .EX_MEM_RegisterRd(em_writeReg), .MEM_WB_RegWrite(mw_RegWrite), .MEM_WB_RegisterRd(mw_writeReg));
+hazard h0(.clk(clk), .rst(rst), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRd(de_writeReg), 
+.ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), .EX_MEM_RegisterRd(em_writeReg), .EX_MEM_RegisterRs(em_readReg1), 
+.EX_MEM_RegisterRt(em_readReg2), .MEM_WB_RegisterRd(mw_writeReg), .MEM_WB_RegisterRs(mw_readReg1), .MEM_WB_RegisterRt(mw_readReg2), 
+.insert_nop(insert_nop));
+
    
 endmodule // proc
 // DUMMY LINE FOR REV CONTROL :0:
