@@ -13,12 +13,15 @@ module hazard (clk,
 			   MEM_WB_RegisterRd, 
 			   MEM_WB_RegisterRs, 
 			   MEM_WB_RegisterRt, 
+			   ID_EX_wrEn, 
+			   EX_MEM_wrEn, 
+			   MEM_WB_wrEn, 
 			   insert_nop
 			   );
 	// input [2:0] PCSrc;
 	// input stall; // createdump 
 	input clk, rst;
-	input [2:0] IF_ID_RegisterRs, IF_ID_RegisterRt, ID_EX_RegisterRd, ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegisterRd, EX_MEM_RegisterRs,EX_MEM_RegisterRt,MEM_WB_RegisterRd, MEM_WB_RegisterRs, MEM_WB_RegisterRt;
+	input [2:0] IF_ID_RegisterRs, IF_ID_RegisterRt, ID_EX_RegisterRd, ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegisterRd, EX_MEM_RegisterRs,EX_MEM_RegisterRt,MEM_WB_RegisterRd, MEM_WB_RegisterRs, MEM_WB_RegisterRt, ID_EX_wrEn, EX_MEM_wrEn, MEM_WB_wrEn;
 	output insert_nop;
 
 	// output FD_NOP, DE_NOP, EM_NOP, MW_NOP;
@@ -28,16 +31,17 @@ module hazard (clk,
 
 ///////////////////////////////////////////////////// Stalling logic ////////////////////////////////////////////////////////////////////
 wire d_haz1, d_haz2, e_haz1, e_haz2, m_haz1, m_haz2;
-assign d_haz1 = (IF_ID_RegisterRs == ID_EX_RegisterRd | IF_ID_RegisterRs == EX_MEM_RegisterRd | IF_ID_RegisterRs == MEM_WB_RegisterRd) ? 1'b1 : 1'b0;
-assign d_haz2 = (IF_ID_RegisterRt == ID_EX_RegisterRd | IF_ID_RegisterRt == EX_MEM_RegisterRd | IF_ID_RegisterRt == MEM_WB_RegisterRd) ? 1'b1 : 1'b0;
+// and with write enable signals
+assign d_haz1 = ((IF_ID_RegisterRs == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
+assign d_haz2 = ((IF_ID_RegisterRt == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
 
-assign e_haz1 = (ID_EX_RegisterRs == EX_MEM_RegisterRd | ID_EX_RegisterRs == MEM_WB_RegisterRd) ? 1'b1 : 1'b0;
-assign e_haz2 = (ID_EX_RegisterRt == EX_MEM_RegisterRd | ID_EX_RegisterRt == MEM_WB_RegisterRd) ? 1'b1 : 1'b0;
+assign e_haz1 = ((ID_EX_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (ID_EX_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
+assign e_haz2 = ((ID_EX_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (ID_EX_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
 
-assign m_haz1 = (EX_MEM_RegisterRs == MEM_WB_RegisterRd) ? 1'b1 : 1'b0;
-assign m_haz2 = (EX_MEM_RegisterRt == MEM_WB_RegisterRd) ? 1'b1 : 1'b0;
+assign m_haz1 = (EX_MEM_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
+assign m_haz2 = (EX_MEM_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-wire nop;
+// wire nop;
 assign insert_nop = d_haz1 | d_haz2 | e_haz1 | e_haz2 | m_haz1 | m_haz2;
 // I force PC hold as PCSrc signal in NOP opcode in control unit
 

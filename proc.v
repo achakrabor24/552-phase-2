@@ -27,7 +27,7 @@ module proc (/*AUTOARG*/
 
 // Hazard signals
 wire insert_nop; 
-assign insert_nop = 1'b0;
+// assign insert_nop = 1'b0;
 
 // errors
 wire errF, errD, errX, errM, errW;
@@ -196,20 +196,23 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
 // M/W flopped wires
-wire [15:0] mw_read_data, mw_ALU_Result;
+wire [15:0] mw_read_data, mw_read_data_2, mw_ALU_Result;
 wire [2:0] mw_readReg1, mw_readReg2;
-wire mw_RegWrite, mw_MemtoReg;
+wire mw_RegWrite, mw_MemtoReg, mw_MemRead, mw_MemWrite;
 
 // Nop is propogated from D/E pipeline
 
 // M/W registers
 dff_N #(.N(16)) reg_mw_ALU_Result(.q(mw_ALU_Result), .d(em_ALU_Result), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(read_data), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_mw_read_data2(.q(mw_read_data_2), .d(em_read_data_2), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_MemtoReg(.q(mw_MemtoReg), .d(em_MemtoReg), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_mw_reg_rs (.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg__mw_reg_rt (.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_mw_reg_MemRead(.q(mw_MemRead), .d(em_MemRead), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_mw_reg_MemWrite (.q(mw_MemWrite), .d(em_MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_mw_next_PC (.q(fin_next_PC), .d(em_next_PC), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_mw_write_data (.q(fd_write_data), .d(write_data), .clk(clk), .rst(rst));
 
@@ -224,12 +227,13 @@ assign err = errF | errD | errX | errM | errW;
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
 
-/*
+
 hazard h0(.clk(clk), .rst(rst), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRd(de_writeReg), 
 .ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), .EX_MEM_RegisterRd(em_writeReg), .EX_MEM_RegisterRs(em_readReg1), 
-.EX_MEM_RegisterRt(em_readReg2), .MEM_WB_RegisterRd(mw_writeReg), .MEM_WB_RegisterRs(mw_readReg1), .MEM_WB_RegisterRt(mw_readReg2), 
+.EX_MEM_RegisterRt(em_readReg2), .MEM_WB_RegisterRd(mw_writeReg), .MEM_WB_RegisterRs(mw_readReg1), .MEM_WB_RegisterRt(mw_readReg2),  
+.ID_EX_wrEn(de_RegWrite), .EX_MEM_wrEn(em_RegWrite), .MEM_WB_wrEn(mw_RegWrite),
 .insert_nop(insert_nop));
-*/
+
 
    
 endmodule // proc
