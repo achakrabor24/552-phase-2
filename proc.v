@@ -72,9 +72,9 @@ dout_fetch_enable, dout_is_branch, dout_RegWrite;
 wire [2:0] dout_PCSrc, dout_writeReg, dout_readReg1, dout_readReg2;
 wire [4:0] dout_ALUOp;
 wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, dout_PC_2_I, dout_PC_2_D;
-
+wire [2:0] mw_writeReg;
 decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction), 
-               .PC_2(fd_PC_2), .write_data(fd_write_data), .read_data_1(dout_read_data_1), 
+               .PC_2(fd_PC_2), .write_data(fd_write_data), .regWrSel(mw_writeReg), .read_data_1(dout_read_data_1), 
                .read_data_2(dout_read_data_2), .Immd(dout_Immd), .PC_2_I(dout_PC_2_I), 
                .PC_2_D(dout_PC_2_D), .ALUSrc(dout_ALUSrc), .is_SLBI(dout_is_SLBI), 
                .is_LBI(dout_is_LBI), .MemRead(dout_MemRead), .MemWrite(dout_MemWrite), 
@@ -197,7 +197,7 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
 // M/W flopped wires
 wire [15:0] mw_read_data, mw_ALU_Result;
-wire [2:0] mw_readReg1, mw_readReg2, mw_writeReg;
+wire [2:0] mw_readReg1, mw_readReg2;
 wire mw_RegWrite, mw_MemtoReg;
 
 // Nop is propogated from D/E pipeline

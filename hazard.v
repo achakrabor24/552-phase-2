@@ -15,8 +15,8 @@ module hazard (clk,
 			   MEM_WB_RegisterRt, 
 			   insert_nop
 			   );
-	input [2:0] PCSrc;
-	input stall; // createdump 
+	// input [2:0] PCSrc;
+	// input stall; // createdump 
 	input clk, rst;
 	input [2:0] IF_ID_RegisterRs, IF_ID_RegisterRt, ID_EX_RegisterRd, ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegisterRd, EX_MEM_RegisterRs,EX_MEM_RegisterRt,MEM_WB_RegisterRd, MEM_WB_RegisterRs, MEM_WB_RegisterRt;
 	output insert_nop;

@@ -4,11 +4,12 @@
    Filename        : decode.v
    Description     : This is the module for the overall decode stage of the processor.
 */
-module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2, Immd,
+module decode(clk, rst, instruction, PC_2, write_data, regWrSel, read_data_1, read_data_2, Immd,
  PC_2_I, PC_2_D, ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, PCSrc, ALUOp, fetch_enable, is_branch,
  createdump, err, writeReg, readReg1, readReg2, RegWrite);
 
 	input clk, rst;
+	input [2:0] regWrSel;
 	input [15:0] instruction, PC_2, write_data;
 
 	output [15:0] read_data_1, read_data_2, Immd, PC_2_I, PC_2_D;
@@ -40,7 +41,7 @@ module decode(clk, rst, instruction, PC_2, write_data, read_data_1, read_data_2,
 				: (RegDst == 2'b10) ? instruction[10:8] : 3'b111;
 
 	regFile_bypass regFile0(.read1Data(read_data_1), .read2Data(read_data_2), .err(err), .clk(clk), .rst(rst), .read1RegSel(instruction[10:8]),
-	 .read2RegSel(instruction[7:5]), .writeRegSel(writeRegSel_temp), .writeData(write_data_temp), .writeEn(RegWrite));
+	 .read2RegSel(instruction[7:5]), .writeRegSel(regWrSel), .writeData(write_data_temp), .writeEn(RegWrite));
 
 	assign writeReg = writeRegSel_temp;
 	assign readReg1 = instruction[10:8];
