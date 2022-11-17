@@ -21,7 +21,8 @@ module hazard (clk,
 	// input [2:0] PCSrc;
 	// input stall; // createdump 
 	input clk, rst;
-	input [2:0] IF_ID_RegisterRs, IF_ID_RegisterRt, ID_EX_RegisterRd, ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegisterRd, EX_MEM_RegisterRs,EX_MEM_RegisterRt,MEM_WB_RegisterRd, MEM_WB_RegisterRs, MEM_WB_RegisterRt, ID_EX_wrEn, EX_MEM_wrEn, MEM_WB_wrEn;
+	input [2:0] IF_ID_RegisterRs, IF_ID_RegisterRt, ID_EX_RegisterRd, ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegisterRd, EX_MEM_RegisterRs,EX_MEM_RegisterRt,MEM_WB_RegisterRd, MEM_WB_RegisterRs, MEM_WB_RegisterRt;
+	input ID_EX_wrEn, EX_MEM_wrEn, MEM_WB_wrEn;
 	output insert_nop;
 
 	// output FD_NOP, DE_NOP, EM_NOP, MW_NOP;
@@ -42,7 +43,12 @@ assign m_haz1 = (EX_MEM_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 
 assign m_haz2 = (EX_MEM_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // wire nop;
-assign insert_nop = d_haz1 | d_haz2 | e_haz1 | e_haz2 | m_haz1 | m_haz2;
+// make insert_nop high for only one clock cycle when RAW hazard detected
+wire insert_nop_flopped, insert_nop_i;
+assign insert_nop_i = d_haz1 | d_haz2 | e_haz1 | e_haz2 | m_haz1 | m_haz2;
+dff flop_nop(.q(insert_nop_flopped), .d(insert_nop_i), .clk(clk), .rst(rst));
+
+assign insert_nop = (insert_nop_flopped) ? 1'b0 : insert_nop_i;
 // I force PC hold as PCSrc signal in NOP opcode in control unit
 
 // wire stall_fd, stall_de, stall_em, stall_mw;
