@@ -36,18 +36,19 @@ wire createdump;
 // fetch 
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
 wire [15:0] fin_next_PC;
+wire [2:0] dout_PCSrc;
 
 // Not connecting to next_PC correctly
-fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
-             .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
-            .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
-            );
-
+// fetch fetch0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), 
+            //  .PC_2(fout_PC_2), .instruction(fout_instruction), .err(errF), 
+            // .fetch_enable(1'b1), .createdump(createdump), .PC(fout_PC)
+            // );
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 // F/D flopped wires
-wire [15:0] fd_instruction, fd_PC_2, fd_PC, fd_next_PC, fd_mux_instruction, fd_write_data, write_data;
+wire [15:0] fd_instruction, fd_PC_2, fd_PC, fd_next_PC, fd_mux_instruction, fd_write_data, write_data, de_PC_2_I, de_PC_2_D, eout_branch, eout_ALU_Result;
 wire [2:0] fd_readReg1, fd_readReg2;
 
+fetch f0(.next_PC(fin_next_PC), .clk(clk), .rst(rst), .PC_2(fd_PC_2), .instruction(fout_instruction), .fetch_enable(1'b1), .createdump(createdump), .err(errF), .PCSrc(dout_PCSrc), .PC_2_D(de_PC_2_D), .PC_2_I(de_PC_2_I), .branch(eout_branch), .insert_nop(insert_nop), .ALU_Result(eout_ALU_Result));
 
 // F/D muxes
 assign fd_mux_instruction = (insert_nop) ? 16'b0000100000000000 : (rst) ? 16'b0000100000000000 : fout_instruction;
@@ -69,7 +70,7 @@ dff_N #(.N(16)) reg_fd_write_data (.q(fd_write_data), .d(write_data), .clk(clk),
 // decode outputs
 wire dout_ALUSrc, dout_is_SLBI, dout_is_LBI, dout_MemRead, dout_MemWrite, dout_MemtoReg, dout_sign, dout_invA, dout_invB, dout_Cin, 
 dout_fetch_enable, dout_is_branch, dout_RegWrite;
-wire [2:0] dout_PCSrc, dout_writeReg, dout_readReg1, dout_readReg2;
+wire [2:0] dout_writeReg, dout_readReg1, dout_readReg2;
 wire [4:0] dout_ALUOp;
 wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, dout_PC_2_I, dout_PC_2_D;
 wire [2:0] mw_writeReg;
@@ -87,7 +88,7 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
 // D/E flopped wires
-wire [15:0] de_read_data_1, de_read_data_2, de_PC_2, de_PC_2_I, de_PC_2_D, de_PC, de_Immd, de_next_PC;
+wire [15:0] de_read_data_1, de_read_data_2, de_PC_2, de_PC, de_Immd, de_next_PC;
 wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite, de_MemWrite, de_is_branch;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg, de_PCSrc;
 wire [4:0] de_ALUOp;
@@ -154,7 +155,7 @@ dff_N #(.N(16)) reg_de_Immd (.q(de_Immd), .d(dout_Immd), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // execute output
-wire [15:0] eout_ALU_Result, eout_next_PC;
+wire [15:0] eout_next_PC;
 
 execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_read_data_2), 
                  .PC_2(de_PC_2), .PC_2_I(de_PC_2_I), .PC_2_D(de_PC_2_D), 
@@ -162,7 +163,7 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
                  .sign(de_sign), .Cin(de_Cin), .is_LBI(de_is_LBI), 
                  .is_SLBI(de_is_SLBI), .PCSrc(de_PCSrc), .ALUOp(de_ALUOp), 
                  .next_PC(eout_next_PC), .ALU_Result_out(eout_ALU_Result), .err(errX), 
-                 .is_branch(de_is_branch), .PC(de_PC)
+                 .is_branch(de_is_branch), .PC(de_PC), .branch(eout_branch)
                  );
 
 ///////////////////////////////////////////////// E/M pipeline register ///////////////////////////////////////////////////////////////
