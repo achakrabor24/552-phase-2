@@ -40,8 +40,12 @@ module decode(clk, rst, instruction, PC_2, write_data, regWrSel, read_data_1, re
 				: (RegDst == 2'b01) ? instruction[7:5] 
 				: (RegDst == 2'b10) ? instruction[10:8] : 3'b111;
 
+	wire RegWrite_f, RegWrite_in;
+	dff reg_flop(.q(RegWrite_f), .d(RegWrite), .rst(rst), .clk(clk));
+	assign RegWrite_in = (RegWrite_f) ? 1'b0 : RegWrite;
+
 	regFile_bypass regFile0(.read1Data(read_data_1), .read2Data(read_data_2), .err(err), .clk(clk), .rst(rst), .read1RegSel(instruction[10:8]),
-	 .read2RegSel(instruction[7:5]), .writeRegSel(regWrSel), .writeData(write_data_temp), .writeEn(RegWrite));
+	 .read2RegSel(instruction[7:5]), .writeRegSel(regWrSel), .writeData(write_data_temp), .writeEn(RegWrite_in));
 
 	assign writeReg = writeRegSel_temp;
 	assign readReg1 = instruction[10:8];
