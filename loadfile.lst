@@ -1,0 +1,41 @@
+0000 c001 lbi r0, 0x1
+0002 0800 nop
+0004 0800 nop
+0006 0800 nop
+0008 0800 nop
+000a 0800 nop
+000c c102 lbi r1, 0x2
+000e 0800 nop
+0010 0800 nop
+0012 0800 nop
+0014 0800 nop
+0016 0800 nop
+0018 d908 add r2, r1, r0
+001a 0800 nop
+001c 0800 nop
+001e 0800 nop
+0020 0800 nop
+0022 0800 nop
+0024 d909 sub r2, r1, r0
+0026 0800 nop
+0028 0800 nop
+002a 0800 nop
+002c 0800 nop
+002e 0800 nop
+0030 0800 nop
+0032 d90a xor r2, r1, r0
+0034 0800 nop
+0036 0800 nop
+0038 0800 nop
+003a 0800 nop
+003c 0800 nop
+003e 0800 nop
+0040 d90b andn r2, r1, r0
+          // nop
+          // nop
+          // nop
+          // nop
+          // nop
+          // nop
+0042 0000 halt
+          

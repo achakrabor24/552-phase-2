@@ -181,7 +181,7 @@ module proc_hier_pbench();
    // Above assignment is a dummy example
    assign DCacheHit = 0;
    
-   assign Halt = DUT.p0.createdump;
+   assign Halt = DUT.p0.mw_halt;
    // Processor halted
    
    

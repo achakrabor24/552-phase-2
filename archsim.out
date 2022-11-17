@@ -1,0 +1,77 @@
+
+WISCalculator v1.0
+Author Derek Hower (drh5@cs.wisc.edu)
+Type "help" for more information
+
+Loading program...
+Executing...
+lbi r0, 1
+INUM:        0 PC: 0x0000 REG: 0 VALUE: 0x0001
+nop
+INUM:        1 PC: 0x0002
+nop
+INUM:        2 PC: 0x0004
+nop
+INUM:        3 PC: 0x0006
+nop
+INUM:        4 PC: 0x0008
+nop
+INUM:        5 PC: 0x000a
+lbi r1, 2
+INUM:        6 PC: 0x000c REG: 1 VALUE: 0x0002
+nop
+INUM:        7 PC: 0x000e
+nop
+INUM:        8 PC: 0x0010
+nop
+INUM:        9 PC: 0x0012
+nop
+INUM:       10 PC: 0x0014
+nop
+INUM:       11 PC: 0x0016
+add r2, r1, r0
+INUM:       12 PC: 0x0018 REG: 2 VALUE: 0x0003
+nop
+INUM:       13 PC: 0x001a
+nop
+INUM:       14 PC: 0x001c
+nop
+INUM:       15 PC: 0x001e
+nop
+INUM:       16 PC: 0x0020
+nop
+INUM:       17 PC: 0x0022
+sub r2, r1, r0
+INUM:       18 PC: 0x0024 REG: 2 VALUE: 0xffff
+nop
+INUM:       19 PC: 0x0026
+nop
+INUM:       20 PC: 0x0028
+nop
+INUM:       21 PC: 0x002a
+nop
+INUM:       22 PC: 0x002c
+nop
+INUM:       23 PC: 0x002e
+nop
+INUM:       24 PC: 0x0030
+xor r2, r1, r0
+INUM:       25 PC: 0x0032 REG: 2 VALUE: 0x0003
+nop
+INUM:       26 PC: 0x0034
+nop
+INUM:       27 PC: 0x0036
+nop
+INUM:       28 PC: 0x0038
+nop
+INUM:       29 PC: 0x003a
+nop
+INUM:       30 PC: 0x003c
+nop
+INUM:       31 PC: 0x003e
+andn r2, r1, r0
+INUM:       32 PC: 0x0040 REG: 2 VALUE: 0x0002
+halt
+program halted
+INUM:       33 PC: 0x0042
+Program Finished

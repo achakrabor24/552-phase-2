@@ -33,8 +33,8 @@ module hazard (clk,
 ///////////////////////////////////////////////////// Stalling logic ////////////////////////////////////////////////////////////////////
 wire d_haz1, d_haz2, e_haz1, e_haz2, m_haz1, m_haz2;
 // and with write enable signals
-assign d_haz1 = ((IF_ID_RegisterRs == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
-assign d_haz2 = ((IF_ID_RegisterRt == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
+assign d_haz1 = (IF_ID_RegisterRs == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
+assign d_haz2 = (IF_ID_RegisterRt == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
 
 assign e_haz1 = ((ID_EX_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (ID_EX_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
 assign e_haz2 = ((ID_EX_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (ID_EX_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;

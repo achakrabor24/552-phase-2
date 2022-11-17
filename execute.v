@@ -27,8 +27,6 @@ alu alu0(.InA(read_data_1), .InB(InB), .Cin(Cin), .Oper(ALUOp), .invA(invA), .in
 // Go to next instruction or branch
 assign branch = (is_branch == 1'b1 & ALU_Result == 1'b1) ? PC_2_I: PC_2;
 
-// PC
-// assign next_PC = (PCSrc == 3'b100) ? PC : (PCSrc == 2'b00) ? PC_2 : (PCSrc == 2'b01) ? ALU_Result : (PCSrc == 2'b10) ? PC_2_D : branch;
 
 // Load or shift load immediate
 assign ALU_Result_out = (is_LBI == 1'b1) ? InB : (is_SLBI == 1'b1) ? ((read_data_1 << 8) | Immd) : ALU_Result;

@@ -4,35 +4,47 @@
    Filename        : fetch.v
    Description     : This is the module for the overall fetch stage of the processor.
 */
-module fetch(next_PC, clk, rst, PC_2, instruction, fetch_enable, createdump, err, PCSrc, PC_2_D, PC_2_I, branch, insert_nop, ALU_Result);
+module fetch(PCSrc, prev_PC, PC_2_out, clk, rst, instruction, fetch_enable, createdump, err, is_branch, insert_nop, ALU_Result_in, 
+		PC_2_I_in, PC_2_D_in, curr_PC);
 
-	input [15:0] next_PC, ALU_Result, PC_2_D, PC_2_I, branch, ALU_Result;
-	input [2:0] PCSrc;
-	input clk, rst, fetch_enable, createdump, insert_nop;
-	output [15:0] PC_2, instruction;
+	input [15:0] prev_PC, ALU_Result_in, PC_2_out, PC_2_I_in, PC_2_D_in;
+	input [2:0] PCSrc, is_branch;
+	input clk, rst, fetch_enable, createdump, insert_nop, is_branch;
+
+	output [15:0] instruction, curr_PC;
 	output err; 
 
-	wire dummy;
-	wire [15:0] read_addr, real_next_PC;
+	wire dummy0, dummy1;
+	wire [15:0] PC, next_PC, PC_2, branch, real_next_PC;
 
-	reg_16b PC0(.Q(read_addr), .D(real_next_PC), .clk(clk), .rst(rst), .writeEn(fetch_enable)); 
+	// Increment last instruction address to next one
+	// cla_16b cla0(.sum(PC_2), .c_out(dummy0), .a(prev_PC), .b(16'b0000_0000_0000_0010), .c_in(1'b0));
 
-	assign next_PC = (PCSrc == 3'b100) ? read_addr : (PCSrc == 2'b00) ? PC_2 : (PCSrc == 2'b01) ? ALU_Result : (PCSrc == 2'b10) ? PC_2_D : branch;
+	cla_16b cla0(.sum(PC_2), .c_out(dummy0), .a(PC), .b(16'b0000_0000_0000_0010), .c_in(1'b0));
 
-	// halt pc, send signal as output, make insert nop input 
-	assign real_next_PC = (insert_nop) ? read_addr : next_PC; // read_addr = current PC
+	assign PC_2_out = PC_2; // So it can be used in decode to get PC+2+I and PC+2+D
 
-	// Increment PC using CLA
-	cla_16b cla0(.sum(PC_2), .c_out(dummy), .a(read_addr), .b(16'b0000_0000_0000_0010), .c_in(1'b0));
+	// Go to next instruction or branch
+	assign branch = (is_branch == 1'b1 & ALU_Result_in == 1'b1) ? PC_2_I_in: PC_2;
+
+	// Find next_PC
+	assign next_PC = (PCSrc == 2'b00) ? PC_2 : (PCSrc == 2'b01) ? ALU_Result_in : (PCSrc == 2'b10) ? PC_2_D_in : branch;
+
+	// Recycle PC if nop
+	assign real_next_PC = (insert_nop == 1'b1) ? PC: next_PC;
+	
+	
+	// Program counter register
+	reg_16b PC0(.Q(PC), .D(real_next_PC), .clk(clk), .rst(rst), .writeEn(fetch_enable)); 
+
 
 	// I-Mem
-	memory2c mem0(.data_out(instruction), .data_in(16'b0), .addr(read_addr), .enable(fetch_enable), .wr(1'b0), .createdump(createdump | insert_nop),
+	memory2c mem0(.data_out(instruction), .data_in(16'b0), .addr(PC), .enable(fetch_enable), .wr(1'b0), .createdump(createdump),
 	 .clk(clk), .rst(rst));
 
-	// assign next_PC = (PCSrc == 3'b100) ? PC : (PCSrc == 2'b00) ? PC_2 : (PCSrc == 2'b01) ? ALU_Result : (PCSrc == 2'b10) ? PC_2_D : branch;
+	assign curr_PC = PC;
 
 	// For now
 	assign err = 1'b0;
-	// assign PC = read_addr;
    
 endmodule

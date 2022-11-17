@@ -30,7 +30,8 @@ module decode(clk, rst, instruction, PC_2, write_data, regWrSel, read_data_1, re
 	wire [1:0] RegDst;
 	wire SignExt, ImmdSrc, is_JAL;
 
-	control_unit signals(.opcode(instruction[15:11]), .funct(instruction[1:0]), .rst(rst), .RegWrite(RegWrite), .SignExt(SignExt), .ImmdSrc(ImmdSrc), .ALUSrc(ALUSrc), 
+	control_unit signals(.opcode(instruction[15:11]), .funct(instruction[1:0]), .rst(rst), .RegWrite(RegWrite), .SignExt(SignExt), 
+	.ImmdSrc(ImmdSrc), .ALUSrc(ALUSrc), 
 	.is_SLBI(is_SLBI), .MemRead(MemRead), .MemWrite(MemWrite), .MemtoReg(MemtoReg), .sign(sign), .invA(invA), .invB(invB), .Cin(Cin), 
 	.is_LBI(is_LBI), .is_JAL(is_JAL), .PCSrc(PCSrc), .RegDst(RegDst), .ALUOp(ALUOp), .fetch_enable(fetch_enable), .createdump(createdump),
 	.is_branch(is_branch));
