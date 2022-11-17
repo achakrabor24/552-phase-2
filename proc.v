@@ -211,7 +211,7 @@ dff_N #(.N(3)) reg__mw_reg_rt (.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst
 dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_mw_next_PC (.q(fin_next_PC), .d(em_next_PC), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_write_data (.q(fin_next_PC), .d(write_data), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_mw_write_data (.q(fd_write_data), .d(write_data), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
