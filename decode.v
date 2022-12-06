@@ -6,9 +6,9 @@
 */
 module decode(clk, rst, instruction, PC_2, write_data, regWrSel, read_data_1, read_data_2, Immd,
  PC_2_I, PC_2_D, ALUSrc, is_SLBI, is_LBI, MemRead, MemWrite, MemtoReg, sign, invA, invB, Cin, PCSrc, ALUOp, fetch_enable, is_branch,
- createdump, err, writeReg, readReg1, readReg2, RegWrite);
+ createdump, err, writeReg, readReg1, readReg2, RegWrite, mw_RegWrite);
 
-	input clk, rst;
+	input clk, rst, mw_RegWrite;
 	input [2:0] regWrSel;
 	input [15:0] instruction, PC_2, write_data;
 
@@ -41,12 +41,10 @@ module decode(clk, rst, instruction, PC_2, write_data, regWrSel, read_data_1, re
 				: (RegDst == 2'b01) ? instruction[7:5] 
 				: (RegDst == 2'b10) ? instruction[10:8] : 3'b111;
 
-	wire RegWrite_f, RegWrite_in;
-	dff reg_flop(.q(RegWrite_f), .d(RegWrite), .rst(rst), .clk(clk));
-	assign RegWrite_in = (RegWrite_f) ? 1'b0 : RegWrite;
+	
 
 	regFile_bypass regFile0(.read1Data(read_data_1), .read2Data(read_data_2), .err(err), .clk(clk), .rst(rst), .read1RegSel(instruction[10:8]),
-	 .read2RegSel(instruction[7:5]), .writeRegSel(regWrSel), .writeData(write_data_temp), .writeEn(RegWrite_in));
+	 .read2RegSel(instruction[7:5]), .writeRegSel(regWrSel), .writeData(write_data_temp), .writeEn(mw_RegWrite));
 
 	assign writeReg = writeRegSel_temp;
 	assign readReg1 = instruction[10:8];
@@ -64,7 +62,5 @@ module decode(clk, rst, instruction, PC_2, write_data, regWrSel, read_data_1, re
 	cla_16b cla0(.sum(PC_2_I), .c_out(dummy1), .a(PC_2), .b(I2), .c_in(1'b0));
 	cla_16b cla1(.sum(PC_2_D), .c_out(dummy2), .a(PC_2), .b(J), .c_in(1'b0));
 
-	// For now
-	// assign err = 1'b0;
    
 endmodule
