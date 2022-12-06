@@ -24,6 +24,7 @@ module proc (/*AUTOARG*/
    
    /* your code here -- should include instantiations of fetch, decode, execute, mem and wb modules */
 
+parameter NOP = 16'b0000100000000000;
 
 // Hazard signals
 wire insert_nop; 
@@ -44,25 +45,19 @@ wire [15:0] fd_instruction, fd_PC_2, fd_PC, fd_next_PC, fd_mux_instruction, fd_w
 dout_PC_2_D, eout_branch, eout_ALU_Result, de_PC, mw_halt;
 wire [2:0] fd_readReg1, fd_readReg2;
 
-fetch f0(.PCSrc(dout_PCSrc), .prev_PC(de_PC), .PC_2_out(fout_PC_2), .clk(clk), .rst(rst), .instruction(fout_instruction), 
+fetch f0(.PCSrc(dout_PCSrc), .PC_2_out(fout_PC_2), .clk(clk), .rst(rst), .instruction(fout_instruction), 
 	.fetch_enable(1'b1), .createdump(mw_halt), .err(errF),
  	.is_branch(dout_is_branch), .insert_nop(insert_nop), .ALU_Result_in(eout_ALU_Result), .PC_2_I_in(dout_PC_2_I), 
-	.PC_2_D_in(dout_PC_2_D), .curr_PC(fout_PC));
+	.PC_2_D_in(dout_PC_2_D), .currPC(fout_PC));
 
 // F/D muxes
-assign fd_mux_instruction = (insert_nop) ? 16'b0000100000000000 : (rst) ? 16'b0000100000000000 : fout_instruction;
+assign fd_mux_instruction = (insert_nop) ? NOP : (rst) ? NOP : fout_instruction;
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 
 // F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fout_PC_2), .clk(clk), .rst(rst));
-
-// dff_N #(.N(3)) reg_fd_readReg1 (.q(fd_readReg1), .d(fout_instruction[10:8]), .clk(clk), .rst(rst));
-// dff_N #(.N(3)) reg_fd_readReg2 (.q(fd_readReg2), .d(fout_instruction[7:5]), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_fd_write_data (.q(fd_write_data), .d(write_data), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_fd_next_PC (.q(fd_next_PC), .d(fin_next_PC), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_fd_PC (.q(fd_PC), .d(fout_PC), .clk(clk), .rst(rst));
 
 // If you figure out you have a HALT in DECODE, there may be 3 other instructions in-flight in the other pipeline stages. 
 // You should stop fetching instructions, but you should not tell the testbench your processor is "done" until the HALT 
@@ -81,6 +76,7 @@ wire [2:0] dout_writeReg, dout_readReg1, dout_readReg2;
 wire [4:0] dout_ALUOp;
 wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, de_PC_2_I, de_PC_2_D;
 wire [2:0] mw_writeReg;
+wire de_RegWrite, em_RegWrite, mw_RegWrite;
 
 decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction), 
                .PC_2(fd_PC_2), .write_data(write_data), .regWrSel(mw_writeReg), .read_data_1(dout_read_data_1), 
@@ -91,13 +87,13 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
                .invB(dout_invB), .Cin(dout_Cin), .PCSrc(dout_PCSrc), 
                .ALUOp(dout_ALUOp), .fetch_enable(dout_fetch_enable), .is_branch(dout_is_branch), 
                .createdump(createdump), .err(errD), .writeReg(dout_writeReg), .readReg1(dout_readReg1), .readReg2(dout_readReg2), 
-		.RegWrite(dout_RegWrite)
+		.RegWrite(dout_RegWrite), .mw_RegWrite(mw_RegWrite)
                );
 
 //////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
 // D/E flopped wires
 wire [15:0] de_read_data_1, de_read_data_2, de_PC_2, de_Immd, de_next_PC;
-wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_RegWrite, de_MemWrite, de_is_branch;
+wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_MemWrite, de_is_branch;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg, de_PCSrc;
 wire [4:0] de_ALUOp;
 
@@ -150,17 +146,6 @@ dff_N #(.N(16)) reg_de_read_data_2 (.q(de_read_data_2), .d(dout_read_data_2), .c
 dff_N #(.N(16)) reg_de_Immd (.q(de_Immd), .d(dout_Immd), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_1), .d(dout_read_data_1), .clk(clk), .rst(rst));
 
-// dff_N #(.N(3)) reg_de_reg_rs (.q(de_readReg1), .d(dout_readReg1), .clk(clk), .rst(rst));
-// dff_N #(.N(3)) reg_de_reg_rt (.q(de_readReg2), .d(dout_readReg2), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_de_PC_2 (.q(de_PC_2), .d(fd_PC_2), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_de_PC_2_I (.q(de_PC_2_I), .d(dout_PC_2_I), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_de_PC_2_D (.q(de_PC_2_D), .d(dout_PC_2_D), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_de_PC (.q(de_PC), .d(fd_PC), .clk(clk), .rst(rst));
-// dff_N #(.N(1)) reg_de_is_branch(.q(de_is_branch), .d(de_mux_is_branch), .clk(clk), .rst(rst));
-// dff_N #(.N(3)) reg_de_PCSrc (.q(de_PCSrc), .d(de_mux_PCSrc), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_de_next_PC (.q(de_next_PC), .d(fd_next_PC), .clk(clk), .rst(rst));
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -173,7 +158,7 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
 
 ///////////////////////////////////////////////// E/M pipeline register ///////////////////////////////////////////////////////////////
 // E/M flopped wires
-wire em_MemRead, em_MemWrite, em_MemtoReg, em_RegWrite, em_halt;
+wire em_MemRead, em_MemWrite, em_MemtoReg, em_halt;
 wire [15:0] em_ALU_Result, em_read_data_2, em_next_PC;
 wire [2:0] em_readReg1, em_readReg2, em_writeReg;
 
@@ -191,9 +176,6 @@ dff_N #(.N(3)) reg_em_reg_rd (.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(
 dff_N #(.N(1)) reg_em_halt(.q(em_halt), .d(de_halt), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst)); // Why do we need this? 
 
-// dff_N #(.N(3)) reg_em_reg_rs (.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst));
-// dff_N #(.N(3)) reg__em_reg_rt (.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_em_next_PC(.q(em_next_PC), .d(eout_next_PC), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // memory outputs
@@ -208,7 +190,7 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
 // M/W flopped wires
 wire [15:0] mw_read_data, mw_read_data_2, mw_ALU_Result;
 wire [2:0] mw_readReg1, mw_readReg2;
-wire mw_RegWrite, mw_MemtoReg, mw_MemRead, mw_MemWrite;
+wire mw_MemtoReg, mw_MemRead, mw_MemWrite;
 
 // Nop is propogated from D/E pipeline
 
@@ -220,13 +202,6 @@ dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(
 dff_N #(.N(1)) reg_mw_halt(.q(mw_halt), .d(em_halt), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst)); // Why is this needed? 
 
-// dff_N #(.N(16)) reg_mw_read_data2(.q(mw_read_data_2), .d(em_read_data_2), .clk(clk), .rst(rst));
-// dff_N #(.N(3)) reg_mw_reg_rs (.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
-// dff_N #(.N(3)) reg__mw_reg_rt (.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_mw_next_PC (.q(fin_next_PC), .d(em_next_PC), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_mw_write_data (.q(fd_write_data), .d(write_data), .clk(clk), .rst(rst));
-// dff_N #(.N(1)) reg_mw_reg_MemRead(.q(mw_MemRead), .d(em_MemRead), .clk(clk), .rst(rst));
-// dff_N #(.N(1)) reg_mw_reg_MemWrite (.q(mw_MemWrite), .d(em_MemWrite), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
