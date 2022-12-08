@@ -28,13 +28,13 @@ parameter NOP = 16'b0000100000000000;
 
 // Hazard signals
 wire insert_nop; 
-assign insert_nop = 1'b0;
+// assign insert_nop = 1'b0;
 
 // errors
 wire errF, errD, errX, errM, errW;
 wire createdump;
 
-// fetch 
+// fetch signals
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
 wire [15:0] fin_next_PC;
 wire [2:0] dout_PCSrc;
@@ -43,7 +43,7 @@ wire [2:0] dout_PCSrc;
 // F/D flopped wires
 wire [15:0] fd_instruction, fd_PC_2, fd_PC, fd_next_PC, fd_mux_instruction, fd_write_data, write_data, dout_PC_2_I, 
 dout_PC_2_D, eout_branch, eout_ALU_Result, de_PC, mw_halt;
-wire [2:0] fd_readReg1, fd_readReg2;
+// wire [2:0] fd_readReg1, fd_readReg2;
 
 fetch f0(.PCSrc(dout_PCSrc), .PC_2_out(fout_PC_2), .clk(clk), .rst(rst), .instruction(fout_instruction), 
 	.fetch_enable(1'b1), .createdump(mw_halt), .err(errF),
@@ -55,17 +55,14 @@ assign fd_mux_instruction = (insert_nop) ? NOP : (rst) ? NOP : fout_instruction;
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 
-// F/D registers
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
+// dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fout_instruction), .clk(clk), .rst(1'b0));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fout_PC_2), .clk(clk), .rst(rst));
 
-// If you figure out you have a HALT in DECODE, there may be 3 other instructions in-flight in the other pipeline stages. 
-// You should stop fetching instructions, but you should not tell the testbench your processor is "done" until the HALT 
-// flows through WRITEBACK.
-
+// wire [15:0] instruction_or_NOP;
+// assign instruction_or_NOP = (insert_nop) ? NOP : (rst) ? NOP : fd_instruction;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// decode inputs
 
 // decode outputs: Control signals
 wire dout_ALUSrc, dout_is_SLBI, dout_is_LBI, dout_MemRead, dout_MemWrite, dout_MemtoReg, dout_sign, dout_invA, dout_invB, dout_Cin, 
@@ -74,12 +71,12 @@ dout_fetch_enable, dout_RegWrite;
 
 wire [2:0] dout_writeReg, dout_readReg1, dout_readReg2;
 wire [4:0] dout_ALUOp;
-wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, de_PC_2_I, de_PC_2_D;
+wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, de_PC_2_I, de_PC_2_D, dout_write_data, mw_write_data;
 wire [2:0] mw_writeReg;
 wire de_RegWrite, em_RegWrite, mw_RegWrite;
 
-decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction), 
-               .PC_2(fd_PC_2), .write_data(write_data), .regWrSel(mw_writeReg), .read_data_1(dout_read_data_1), 
+decode decode0(.clk(clk), .rst(rst), .instruction(fd_mux_instruction), 
+               .PC_2(fd_PC_2), .write_data_in(write_data), .write_data_out(dout_write_data), .regWrSel(mw_writeReg), .read_data_1(dout_read_data_1), 
                .read_data_2(dout_read_data_2), .Immd(dout_Immd), .PC_2_I(dout_PC_2_I), 
                .PC_2_D(dout_PC_2_D), .ALUSrc(dout_ALUSrc), .is_SLBI(dout_is_SLBI), 
                .is_LBI(dout_is_LBI), .MemRead(dout_MemRead), .MemWrite(dout_MemWrite), 
@@ -90,9 +87,9 @@ decode decode0(.clk(clk), .rst(rst), .instruction(fd_instruction),
 		.RegWrite(dout_RegWrite), .mw_RegWrite(mw_RegWrite)
                );
 
-//////////////////////////////////////////////////////// D/E pipeline register //////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////// D/E pipeline registers //////////////////////////////////////////////////////////
 // D/E flopped wires
-wire [15:0] de_read_data_1, de_read_data_2, de_PC_2, de_Immd, de_next_PC;
+wire [15:0] de_read_data_1, de_read_data_2, de_PC_2, de_Immd, de_next_PC, de_write_data;
 wire de_ALUSrc, de_invA, de_invB, de_sign, de_Cin, de_is_SLBI, de_is_LBI, de_MemRead, de_MemtoReg, de_MemWrite, de_is_branch;
 wire [2:0] de_readReg1, de_readReg2, de_writeReg, de_PCSrc;
 wire [4:0] de_ALUOp;
@@ -106,7 +103,7 @@ wire [4:0] de_mux_ALUOp;
 
 
 // Control signals: Set control signals to 0 if insert_nop = 1  
-assign de_mux_ALUSrc = (insert_nop) ? 1'b0 : dout_ALUSrc;
+assign de_mux_ALUSrc = (insert_nop) ? 5'b00000 : dout_ALUSrc;
 assign de_mux_invA = (insert_nop) ? 1'b0 : dout_invA;
 assign de_mux_invB = (insert_nop) ? 1'b0  : dout_invB;
 assign de_mux_sign = (insert_nop) ? 1'b0  : dout_sign;
@@ -118,8 +115,31 @@ assign de_mux_MemtoReg = (insert_nop) ? 1'b0 : dout_MemtoReg;
 assign de_mux_RegWrite = (insert_nop) ? 1'b0 : dout_RegWrite;
 assign de_mux_MemWrite = (insert_nop) ? 1'b0 : dout_MemWrite;
 assign de_mux_is_branch = (insert_nop) ? 1'b0 : dout_is_branch;
-assign de_mux_PCSrc = (insert_nop) ? 2'b00 : dout_PCSrc; // Give next_PC the current PC
+assign de_mux_PCSrc = (insert_nop) ? 3'b000 : dout_PCSrc; // Give next_PC the current PC
 assign de_mux_ALUOp = (insert_nop) ? 5'b00000 : dout_ALUOp; // not sure if this should be something else
+
+
+
+
+// Recycle signals
+/*
+assign de_mux_ALUSrc =  dout_ALUSrc;
+assign de_mux_invA =  dout_invA;
+assign de_mux_invB =  dout_invB;
+assign de_mux_sign =  dout_sign;
+assign de_mux_Cin =  dout_Cin; // Is always low
+assign de_mux_is_SLBI =  dout_is_SLBI;
+assign de_mux_is_LBI =  dout_is_LBI;
+assign de_mux_MemRead =  dout_MemRead;
+assign de_mux_MemtoReg =  dout_MemtoReg;
+assign de_mux_RegWrite =  dout_RegWrite;
+assign de_mux_MemWrite =  dout_MemWrite;
+assign de_mux_is_branch =  dout_is_branch;
+assign de_mux_PCSrc =  dout_PCSrc; // Give next_PC the current PC
+assign de_mux_ALUOp =  dout_ALUOp; // not sure if this should be something else
+*/
+
+
 
 
 // D/E registers
@@ -134,18 +154,23 @@ dff_N #(.N(1)) reg_de_is_SLBI(.q(de_is_SLBI), .d(de_mux_is_SLBI), .clk(clk), .rs
 dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(de_mux_is_LBI), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(de_mux_MemRead), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(de_mux_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_reg_wr (.q(de_RegWrite), .d(de_mux_RegWrite), .clk(clk), .rst(rst)); // need this but why?
+dff_N #(.N(1)) reg_de_reg_wr (.q(de_RegWrite), .d(de_mux_RegWrite), .clk(clk), .rst(rst)); 
 dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(de_mux_MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(5)) reg_de_ALUOp (.q(de_ALUOp), .d(de_mux_ALUOp), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_de_halt(.q(de_halt), .d(createdump), .clk(clk), .rst(rst));
 
 
 // Doesn't need to be muxed, just passed through the pipeline
-dff_N #(.N(3)) reg_de_reg_rd (.q(de_writeReg), .d(dout_writeReg), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rd(.q(de_writeReg), .d(dout_writeReg), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rs(.q(de_readReg1), .d(dout_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_de_reg_rt(.q(de_readReg2), .d(dout_readReg2), .clk(clk), .rst(rst));
+
 dff_N #(.N(16)) reg_de_read_data_2 (.q(de_read_data_2), .d(dout_read_data_2), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_Immd (.q(de_Immd), .d(dout_Immd), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_1), .d(dout_read_data_1), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_de_write_data (.q(de_write_data), .d(dout_write_data), .clk(clk), .rst(rst));
 
+wire [15:0] mw_read_data_1, mw_read_data_2, em_read_data_2, em_read_data_1;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -159,7 +184,7 @@ execute execute0(.Immd(de_Immd), .read_data_1(de_read_data_1), .read_data_2(de_r
 ///////////////////////////////////////////////// E/M pipeline register ///////////////////////////////////////////////////////////////
 // E/M flopped wires
 wire em_MemRead, em_MemWrite, em_MemtoReg, em_halt;
-wire [15:0] em_ALU_Result, em_read_data_2, em_next_PC;
+wire [15:0] em_ALU_Result, em_write_data;
 wire [2:0] em_readReg1, em_readReg2, em_writeReg;
 
 // NO NEED TO MUX, nop detected in decode/execute stage
@@ -169,12 +194,16 @@ dff_N #(.N(16)) reg_em_ALU_Result(.q(em_ALU_Result), .d(eout_ALU_Result), .clk(c
 dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(de_MemRead), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_MemWrite(.q(em_MemWrite), .d(de_MemWrite), .clk(clk), .rst(rst));
 dff_N #(.N(16)) reg_em_read_data_2(.q(em_read_data_2), .d(de_read_data_2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_em_read_data_1(.q(em_read_data_1), .d(de_read_data_1), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_em_write_data (.q(em_write_data), .d(de_write_data), .clk(clk), .rst(rst));
 
 // Needed later
 dff_N #(.N(1)) reg_em_MemtoReg(.q(em_MemtoReg), .d(de_MemtoReg), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_em_reg_rd (.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_em_halt(.q(em_halt), .d(de_halt), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst)); // Why do we need this? 
+dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst)); 
+dff_N #(.N(3)) reg_em_reg_rs(.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_em_reg_rt(.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst));
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +217,7 @@ memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRe
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
 // M/W flopped wires
-wire [15:0] mw_read_data, mw_read_data_2, mw_ALU_Result;
+wire [15:0] mw_read_data, mw_ALU_Result;
 wire [2:0] mw_readReg1, mw_readReg2;
 wire mw_MemtoReg, mw_MemRead, mw_MemWrite;
 
@@ -200,7 +229,12 @@ dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(read_data), .clk(clk), .rs
 dff_N #(.N(1)) reg_mw_MemtoReg(.q(mw_MemtoReg), .d(em_MemtoReg), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
 dff_N #(.N(1)) reg_mw_halt(.q(mw_halt), .d(em_halt), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst)); // Why is this needed? 
+dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_mw_read_data_2(.q(mw_read_data_2), .d(em_read_data_2), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_mw_read_data_1(.q(mw_read_data_1), .d(em_read_data_1), .clk(clk), .rst(rst));
+dff_N #(.N(16)) reg_mw_write_data (.q(mw_write_data), .d(em_write_data), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_mw_reg_rs(.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_mw_reg_rt(.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,24 +246,23 @@ wb wb0(.ALU_result(mw_ALU_Result), .read_data(mw_read_data), .MemtoReg(mw_MemtoR
 // Errors for all the stages
 assign err = errF | errD | errX | errM | errW;
 
-// If you figure out you have a HALT in DECODE, there may be 3 other instructions in-flight in the other pipeline stages.  
-// You should stop fetching instructions
+wire wb_RegWrite;
+wire [2:0] wb_writeReg; 
 
+// Pipeline for hazard unit
+dff_N #(.N(1)) reg_wb_reg_wr (.q(wb_RegWrite), .d(mw_RegWrite), .clk(clk), .rst(rst));
+dff_N #(.N(3)) reg_wb_reg_rd (.q(wb_writeReg), .d(mw_writeReg), .clk(clk), .rst(rst));
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
 
-/*
-hazard h0(.clk(clk), .rst(rst), .IF_ID_RegisterRs(fd_readReg1), .IF_ID_RegisterRt(fd_readReg2), .ID_EX_RegisterRd(de_writeReg), 
-.ID_EX_RegisterRs(de_readReg1), .ID_EX_RegisterRt(de_readReg2), .EX_MEM_RegisterRd(em_writeReg), .EX_MEM_RegisterRs(em_readReg1), 
-.EX_MEM_RegisterRt(em_readReg2), .MEM_WB_RegisterRd(mw_writeReg), .MEM_WB_RegisterRs(mw_readReg1), .MEM_WB_RegisterRt(mw_readReg2),  
-.ID_EX_wrEn(de_RegWrite), .EX_MEM_wrEn(em_RegWrite), .MEM_WB_wrEn(mw_RegWrite),
-.insert_nop(insert_nop), .ID_EX_MemRead(de_MemRead), .PCSrc(dout_PCSrc));
-*/
+hazard h0(.PCSrc(dout_PCSrc), .clk(clk), .rst(rst), .de_MemRead(de_MemRead), .de_rt(de_readReg2), .fd_rs(fd_instruction[10:8]), 
+.fd_rt(fd_instruction[7:5]), .insert_nop(insert_nop), .em_rd(em_writeReg), .em_RegWrite(em_RegWrite), .de_rs(de_readReg1),
+.mw_rd(mw_writeReg), .mw_RegWrite(mw_RegWrite), .em_rs(em_readReg1), .em_rt(em_readReg2), .wb_RegWrite(wb_RegWrite), .wb_rd(wb_writeReg),
+.de_RegWrite(de_RegWrite), .de_rd(de_writeReg), .mw_rs(mw_readReg1), .mw_rt(mw_readReg2), .dout_RegWrite(dout_RegWrite), 
+.dout_rd(dout_writeReg));
 
 
-
-
-
+///////////////////////////////////////////////////////////////// Forwarding /////////////////////////////////////////////////////////////
    
 endmodule // proc
 // DUMMY LINE FOR REV CONTROL :0:
