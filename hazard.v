@@ -1,75 +1,47 @@
-// module hazard(clk, rst, PCSrc, stall, FD_NOP, DE_NOP, EM_NOP, MW_NOP, ID_EX_MemRead, IF_ID_RegisterRs, IF_ID_RegisterRt,
-// ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegWrite, EX_MEM_RegisterRd, MEM_WB_RegWrite, MEM_WB_RegisterRd);
-module hazard (clk, 
-			   rst, 
-			   IF_ID_RegisterRs, 
-			   IF_ID_RegisterRt, 
-			   ID_EX_RegisterRd, 
-			   ID_EX_RegisterRs, 
-			   ID_EX_RegisterRt, 
-			   EX_MEM_RegisterRd, 
-			   EX_MEM_RegisterRs,
-			   EX_MEM_RegisterRt,
-			   MEM_WB_RegisterRd, 
-			   MEM_WB_RegisterRs, 
-			   MEM_WB_RegisterRt, 
-			   ID_EX_wrEn, 
-			   EX_MEM_wrEn, 
-			   MEM_WB_wrEn, 
-			   insert_nop
-			   );
-	// input [2:0] PCSrc;
-	// input stall; // createdump 
-	input clk, rst;
-	input [2:0] IF_ID_RegisterRs, IF_ID_RegisterRt, ID_EX_RegisterRd, ID_EX_RegisterRs, ID_EX_RegisterRt, EX_MEM_RegisterRd, EX_MEM_RegisterRs,EX_MEM_RegisterRt,MEM_WB_RegisterRd, MEM_WB_RegisterRs, MEM_WB_RegisterRt;
-	input ID_EX_wrEn, EX_MEM_wrEn, MEM_WB_wrEn;
-	output insert_nop;
+module hazard(PCSrc, clk, rst, de_MemRead, de_rs, de_rt, fd_rs, fd_rt, em_rd, em_RegWrite, em_rs, em_rt, insert_nop, mw_RegWrite, mw_rd,
+wb_RegWrite, wb_rd, de_RegWrite, de_rd, mw_rs, mw_rt, dout_RegWrite, dout_rd);
 
-	// output FD_NOP, DE_NOP, EM_NOP, MW_NOP;
-// Branch detection for flushing
-// wire br_j_taken, if_stall_load, if_stall_exe, if_stall_mem;
+input [2:0] PCSrc;
+input clk, rst, de_MemRead, em_RegWrite, mw_RegWrite, wb_RegWrite, de_RegWrite, dout_RegWrite;
+input [2:0] de_rt, fd_rs, fd_rt, em_rd, de_rs, mw_rd, em_rs, em_rt, wb_rd, de_rd, mw_rs, mw_rt, dout_rd; // All registers
+
+
+output insert_nop;
+
+// I think we are stalling at the correct time, but stalling incorrectly
+
+wire br_j_taken, load_stall, de_stall, em_stall, mw_stall, wb_stall, insert_nop_dff; 
+
 // assign br_j_taken = ((PCSrc == 2'b10) | (PCSrc == 2'b11)) ? 1'b1: 1'b0;
 
-///////////////////////////////////////////////////// Stalling logic ////////////////////////////////////////////////////////////////////
-wire d_haz1, d_haz2, e_haz1, e_haz2, m_haz1, m_haz2;
-// and with write enable signals
-assign d_haz1 = (IF_ID_RegisterRs == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
-assign d_haz2 = (IF_ID_RegisterRt == ID_EX_RegisterRd & ID_EX_wrEn) | (IF_ID_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (IF_ID_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
 
-assign e_haz1 = ((ID_EX_RegisterRs == EX_MEM_RegisterRd & EX_MEM_wrEn) | (ID_EX_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
-assign e_haz2 = ((ID_EX_RegisterRt == EX_MEM_RegisterRd & EX_MEM_wrEn) | (ID_EX_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn)) ? 1'b1 : 1'b0;
+// Decode hazard
+assign de_stall = de_RegWrite & ((de_rd == fd_rs) | (de_rd == fd_rt));
 
-assign m_haz1 = (EX_MEM_RegisterRs == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
-assign m_haz2 = (EX_MEM_RegisterRt == MEM_WB_RegisterRd & MEM_WB_wrEn) ? 1'b1 : 1'b0;
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// wire nop;
-// make insert_nop high for only one clock cycle when RAW hazard detected
-wire insert_nop_flopped, insert_nop_i;
-assign insert_nop_i = d_haz1 | d_haz2 | e_haz1 | e_haz2 | m_haz1 | m_haz2;
-dff flop_nop(.q(insert_nop_flopped), .d(insert_nop_i), .clk(clk), .rst(rst));
+wire em_stall_latch, mw_stall_latch;
 
-assign insert_nop = (insert_nop_flopped) ? 1'b0 : insert_nop_i;
-// I force PC hold as PCSrc signal in NOP opcode in control unit
+// Stall propogates through pipeline
+dff dff0(.q(em_stall_latch), .d(de_stall), .clk(clk), .rst(rst));
+dff dff1(.q(mw_stall_latch), .d(em_stall_latch), .clk(clk), .rst(rst));
 
-// wire stall_fd, stall_de, stall_em, stall_mw;
+// Load instruction stall
+// assign load_stall = ((de_MemRead == 1'b1) & ((de_rt == fd_rs) | (de_rt == fd_rt))) & (br_j_taken == 1'b0); 
 
-// Recycle signal assignment (?) 
+// Execute hazard
+assign em_stall = em_RegWrite & ((em_rd == de_rs) | (em_rd == de_rt));
 
-// Not sure what this is or what to do here
-// dff_N #(.N(1)) reg_stall_FD      (.q(stall_fd), .d(stall),.clk(clk),.rst(rst));
-// dff_N #(.N(1)) reg_stall_DE      (.q(stall_de),.d(stall_fd),.clk(clk),.rst(rst));
-// dff_N #(.N(1)) reg_stall_EM      (.q(stall_em),.d(stall_de),.clk(clk),.rst(rst));
-// dff_N #(.N(1)) reg_stall_MW      (.q(stall_mw),.d(stall_em),.clk(clk),.rst(rst));
+wire em_stall_latch1, mw_stall_latch1;
 
-/////////////////////////////////////////////////////////// NOP signal assignment //////////////////////////////////////////////////////////
+// Stall propogates through pipeline
+dff dff2(.q(em_stall_latch1), .d(em_stall), .clk(clk), .rst(rst));
+dff dff3(.q(mw_stall_latch1), .d(em_stall_latch1), .clk(clk), .rst(rst));
 
-// If control unit says stall, stall or if branch taken in a predict-not-taken scheme (resolved in fetch and decode)
-// assign FD_NOP = stall | br_j_taken; 
-// assign DE_NOP = br_j_taken | if_stall_load | stall_de; 
-// assign EM_NOP = if_stall_exe | stall_em;
-// assign MW_NOP = if_stall_mem | stall_mw;
+// Mem hazard 
+assign mw_stall = mw_RegWrite & ((mw_rd == de_rs) | (mw_rd == de_rt));
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+assign insert_nop = rst ? 1'b0 : (em_stall | mw_stall | de_stall | em_stall_latch | mw_stall_latch | mw_stall_latch1 | em_stall_latch1);
+
 
 
 endmodule
