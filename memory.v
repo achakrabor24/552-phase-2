@@ -17,11 +17,10 @@ module memory (ALU_result, read_data_in, MemRead, MemWrite,  read_data_out, clk,
 	wire memReadorWrite;
 
 	assign memReadorWrite = MemWrite | MemRead;
-	
-	// For now
-	assign err = 1'b0;
 
-	memory2c mem0(.data_out(read_data_out), .data_in(read_data_in), .addr(ALU_result), .enable(memReadorWrite), .wr(MemWrite), 
-		.createdump(createdump), .clk(clk), .rst(rst));
+
+	memory2c_align mem0(.data_out(read_data_out), .data_in(read_data_in), .addr(ALU_result), .enable(memReadorWrite), .wr(MemWrite), 
+	.createdump(createdump), .clk(clk), .rst(rst), .err(err));
+
    
 endmodule
