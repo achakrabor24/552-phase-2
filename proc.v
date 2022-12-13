@@ -32,6 +32,7 @@ wire insert_nop;
 
 // errors
 wire errF, errD, errX, errM, errW;
+wire d_mem_err, i_mem_err;
 wire createdump;
 
 // fetch signals
@@ -48,7 +49,7 @@ wire mw_halt;
 wire de_is_branch, branch_is_taken_out; 
 
 fetch f0(.PCSrc(dout_PCSrc), .PC_2_out(fout_PC_2), .clk(clk), .rst(rst), .instruction(fout_instruction), 
-	.fetch_enable(1'b1), .createdump(mw_halt), .err(errF),
+	.fetch_enable(1'b1), .createdump(mw_halt), .err(i_mem_err),
  	.is_branch(de_is_branch), .insert_nop(insert_nop), .ALU_Result_in(eout_ALU_Result), .PC_2_I_in(dout_PC_2_I), 
 	.PC_2_D_in(dout_PC_2_D), .currPC(fout_PC), .branch_is_taken(branch_is_taken_out));
 
@@ -61,6 +62,10 @@ assign fd_mux_instruction = (insert_nop | branch_is_taken_out) ? NOP : (rst) ? N
 dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
 // dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fout_instruction), .clk(clk), .rst(1'b0));
 dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fout_PC_2), .clk(clk), .rst(rst));
+
+// Error pipelined for aligned memory
+wire fd_i_mem_err, de_i_mem_err, em_i_mem_err, mw_i_mem_err;
+dff_N #(.N(1)) reg_i_mem_err_f(.q(fd_i_mem_err), .d(i_mem_err), .clk(clk), .rst(rst));
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +159,7 @@ dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_1), .d(dout_read_data_1), .c
 
 wire [15:0] de_instruction;
 dff_N #(.N(16)) reg_de_instruction(.q(de_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_i_mem_err_d(.q(de_i_mem_err), .d(fd_i_mem_err), .clk(clk), .rst(rst));
 
 wire [15:0] mw_read_data_1, mw_read_data_2, em_read_data_2, em_read_data_1;
 
@@ -194,22 +200,27 @@ dff_N #(.N(3)) reg_em_reg_rt(.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(r
 
 wire [15:0] em_instruction;
 dff_N #(.N(16)) reg_em_instruction(.q(em_instruction), .d(de_instruction), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_i_mem_err_e(.q(em_i_mem_err), .d(de_i_mem_err), .clk(clk), .rst(rst));
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // memory outputs
 wire [15:0] read_data;
 
+// TODO: memory2c_align
+
+
 memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
                .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), 
                .rst(rst), .createdump(em_halt), .err(errM)
                );
 
+
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
 // M/W flopped wires
 wire [15:0] mw_read_data, mw_ALU_Result;
 wire [2:0] mw_readReg1, mw_readReg2;
-wire mw_MemtoReg, mw_MemRead, mw_MemWrite;
+wire mw_MemtoReg, mw_MemRead, mw_MemWrite, mw_d_mem_err;
 
 // Nop is propogated from D/E pipeline
 
@@ -226,6 +237,9 @@ dff_N #(.N(16)) reg_mw_read_data_1(.q(mw_read_data_1), .d(em_read_data_1), .clk(
 dff_N #(.N(3)) reg_mw_reg_rs(.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_mw_reg_rt(.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
 
+// Pipeline error to write back 
+dff_N #(.N(1)) reg_d_mem_err(.q(mw_d_mem_err), .d(d_mem_err), .clk(clk), .rst(rst));
+dff_N #(.N(1)) reg_i_mem_err_m(.q(mw_i_mem_err), .d(em_i_mem_err), .clk(clk), .rst(rst));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -233,8 +247,9 @@ wb wb0(.ALU_result(mw_ALU_Result), .read_data(mw_read_data), .MemtoReg(mw_MemtoR
        .write_data(write_data), .err(errW)
        );
 
-// Errors for all the stages
-assign err = errF | errD | errX | errM | errW;
+
+// Pipeline err from fetch and memory
+assign err = mw_d_mem_err | mw_i_mem_err; 
 
 wire wb_RegWrite;
 wire [2:0] wb_writeReg; 
