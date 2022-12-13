@@ -206,14 +206,19 @@ dff_N #(.N(1)) reg_i_mem_err_e(.q(em_i_mem_err), .d(de_i_mem_err), .clk(clk), .r
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // memory outputs
 wire [15:0] read_data;
-
-// TODO: memory2c_align
-
-
-memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
-               .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), 
-               .rst(rst), .createdump(em_halt), .err(errM)
-               );
+// I-Cache signals
+wire i_done /* I sure am*/, i_cacheHit;
+reg i_stall;
+// memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
+//                .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), 
+//                .rst(rst), .createdump(em_halt), .err(errM)
+//                );
+memory memory0(
+   // Inputs
+	.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), .MemWrite(em_MemWrite), .clk(clk), .rst(rst), .createdump(em_halt),
+	// Outputs
+	.read_data_out(read_data), .Done(i_done), .Stall(i_stall), .CacheHit(i_cacheHit), .err(errM)
+   );
 
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
@@ -257,6 +262,17 @@ wire [2:0] wb_writeReg;
 // Pipeline for hazard unit
 dff_N #(.N(1)) reg_wb_reg_wr (.q(wb_RegWrite), .d(mw_RegWrite), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_wb_reg_rd (.q(wb_writeReg), .d(mw_writeReg), .clk(clk), .rst(rst));
+
+///////////////////////////////////////////////////////////////// Memory ///////////////////////////////////////////////////////////
+// D-Cache Signals
+wire d_done, d_cacheHit;
+reg d_stall;
+
+memory m(
+   // Inputs
+	.ALU_result(mw_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), .MemWrite(em_MemWrite), .clk(clk), .rst(rst), .createdump(createdump),
+	// Outputs
+	.read_data_out(read_data), .Done(d_done), .Stall(d_stall), .CacheHit(d_cacheHit), .err(errM));
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
 
