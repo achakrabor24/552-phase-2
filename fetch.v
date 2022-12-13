@@ -40,12 +40,14 @@ module fetch(PCSrc, PC_2_out, clk, rst, instruction, fetch_enable, createdump, e
 
 
 	// I-Mem
-	memory2c mem0(.data_out(instruction), .data_in(16'b0), .addr(PC), .enable(fetch_enable), .wr(1'b0), .createdump(createdump),
-	 .clk(clk), .rst(rst));
+	memory2c_align mem0(.data_out(instruction), .data_in(16'b0), .addr(PC), .enable(fetch_enable), .wr(1'b0), .createdump(createdump),
+	 .clk(clk), .rst(rst), .err(err));
+
+	// pipeline error
 
 	assign currPC = PC;
 
 	// For now
-	assign err = 1'b0;
+	// assign err = 1'b0;
    
 endmodule
