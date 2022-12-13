@@ -17,7 +17,7 @@ module memory (
 
 	output [15:0] read_data_out;
 	output Done, CacheHit;
-	output reg Stall;
+	output Stall;
 	output err;
 
 	wire memReadorWrite;
@@ -29,9 +29,9 @@ module memory (
    
 	mem_system mem0( 
 		// Inputs
-		.Addr(ALU_result), .DataIn(read_data_in), .Rd(MemRead), .Wr(MemWrite), .createdump(createdump), .clk(clk), .rst(rst)
+		.Addr(ALU_result), .DataIn(read_data_in), .Rd(MemRead), .Wr(MemWrite), .createdump(createdump), .clk(clk), .rst(rst),
 		// Outputs
-		.DataOut(read_data_out), .Done(Done), .Stall(Stall), .CacheHit(CacheHit), .err(err),
+		.DataOut(read_data_out), .Done(Done), .Stall(Stall), .CacheHit(CacheHit), .err(err)
 		);
 
 

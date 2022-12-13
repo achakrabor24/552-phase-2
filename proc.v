@@ -208,7 +208,7 @@ dff_N #(.N(1)) reg_i_mem_err_e(.q(em_i_mem_err), .d(de_i_mem_err), .clk(clk), .r
 wire [15:0] read_data;
 // I-Cache signals
 wire i_done /* I sure am*/, i_cacheHit;
-reg i_stall;
+wire i_stall;
 // memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
 //                .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), 
 //                .rst(rst), .createdump(em_halt), .err(errM)
@@ -266,7 +266,7 @@ dff_N #(.N(3)) reg_wb_reg_rd (.q(wb_writeReg), .d(mw_writeReg), .clk(clk), .rst(
 ///////////////////////////////////////////////////////////////// Memory ///////////////////////////////////////////////////////////
 // D-Cache Signals
 wire d_done, d_cacheHit;
-reg d_stall;
+wire d_stall;
 
 memory m(
    // Inputs
