@@ -23,9 +23,7 @@ module memory (
 	wire memReadorWrite;
 
 	assign memReadorWrite = MemWrite | MemRead;
-	
-	// For now
-	assign err = 1'b0;
+
    
 	mem_system mem0( 
 		// Inputs

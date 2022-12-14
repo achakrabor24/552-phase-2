@@ -5,14 +5,14 @@
    Description     : This is the module for the overall fetch stage of the processor.
 */
 module fetch(PCSrc, PC_2_out, clk, rst, instruction, fetch_enable, createdump, err, is_branch, insert_nop, ALU_Result_in, 
-		PC_2_I_in, PC_2_D_in, currPC, branch_is_taken);
+		PC_2_I_in, PC_2_D_in, currPC, branch_is_taken, Stall);
 
 	input [15:0] ALU_Result_in, PC_2_out, PC_2_I_in, PC_2_D_in;
 	input [2:0] PCSrc;
 	input clk, rst, fetch_enable, createdump, insert_nop, is_branch;
 
 	output [15:0] instruction, currPC;
-	output err, branch_is_taken; 
+	output err, branch_is_taken, Stall; 
 
 	wire dummy0, dummy1;
 	wire [15:0] PC, next_PC, PC_2, branch, real_next_PC;
@@ -40,9 +40,18 @@ module fetch(PCSrc, PC_2_out, clk, rst, instruction, fetch_enable, createdump, e
 
 
 	// I-Mem
-	memory2c_align mem0(.data_out(instruction), .data_in(16'b0), .addr(PC), .enable(fetch_enable), .wr(1'b0), .createdump(createdump),
-	 .clk(clk), .rst(rst), .err(err));
+	// memory2c_align mem0(.data_out(instruction), .data_in(16'b0), .addr(PC), .enable(fetch_enable), .wr(1'b0), .createdump(createdump), .clk(clk), .rst(rst), .err(err));
+	
+	// New I-Mem
+	// CacheHit and Done are always 1 so leave disconnected
+	stallmem mem0(
 
+	// Outputs
+	.DataOut(instruction), .Done(), .Stall(Stall), .CacheHit(),
+
+	// Inputs
+	 .err(err), .Addr(PC), .DataIn(16'b0), .Rd(fetch_enable), .Wr(1'b0), .createdump(createdump), .clk(clk), .rst(rst));
+	
 	// pipeline error
 
 	assign currPC = PC;
