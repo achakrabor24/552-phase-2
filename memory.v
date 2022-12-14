@@ -24,13 +24,17 @@ module memory (
 
 	assign memReadorWrite = MemWrite | MemRead;
 
+	memory2c_align mem0(.data_out(read_data_out), .data_in(read_data_in), .addr(ALU_result), .enable(memReadorWrite), .wr(MemWrite), 
+		.createdump(createdump), .clk(clk), .rst(rst), .err(err));
    
+	/*
 	mem_system mem0( 
 		// Inputs
 		.Addr(ALU_result), .DataIn(read_data_in), .Rd(MemRead), .Wr(MemWrite), .createdump(createdump), .clk(clk), .rst(rst),
 		// Outputs
 		.DataOut(read_data_out), .Done(Done), .Stall(Stall), .CacheHit(CacheHit), .err(err)
 		);
+	*/
 
 
     

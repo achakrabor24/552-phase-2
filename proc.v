@@ -33,7 +33,7 @@ wire insert_nop;
 // errors
 wire errF, errD, errX, errM, errW;
 wire d_mem_err, i_mem_err;
-wire createdump;
+wire createdump, Stall;
 
 // fetch signals
 wire [15:0] fout_PC_2, fout_instruction, fout_PC;
@@ -51,7 +51,7 @@ wire de_is_branch, branch_is_taken_out;
 fetch f0(.PCSrc(dout_PCSrc), .PC_2_out(fout_PC_2), .clk(clk), .rst(rst), .instruction(fout_instruction), 
 	.fetch_enable(1'b1), .createdump(mw_halt), .err(i_mem_err),
  	.is_branch(de_is_branch), .insert_nop(insert_nop), .ALU_Result_in(eout_ALU_Result), .PC_2_I_in(dout_PC_2_I), 
-	.PC_2_D_in(dout_PC_2_D), .currPC(fout_PC), .branch_is_taken(branch_is_taken_out));
+	.PC_2_D_in(dout_PC_2_D), .currPC(fout_PC), .branch_is_taken(branch_is_taken_out), .Stall(Stall));
 
 // F/D muxes
 // Flushes instructions in fd and de pipeline if branch detected
@@ -59,14 +59,12 @@ assign fd_mux_instruction = (insert_nop | branch_is_taken_out) ? NOP : (rst) ? N
 
 ///////////////////////////////////////////////////////// F/D pipeline registers ///////////////////////////////////////////////////////
 
-dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fd_mux_instruction), .clk(clk), .rst(1'b0));
-// dff_N #(.N(16)) reg_fd_instruction (.q(fd_instruction), .d(fout_instruction), .clk(clk), .rst(1'b0));
-dff_N #(.N(16)) reg_fd_PC_2 (.q(fd_PC_2), .d(fout_PC_2), .clk(clk), .rst(rst));
+reg_16b reg_fd_instruction(.Q(fd_instruction), .D(fd_mux_instruction), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_fd_PC_2(.Q(fd_PC_2), .D(fout_PC_2), .clk(clk), .rst(rst), .writeEn(~Stall));
 
-// Error pipelined for aligned memory
+// Error pipelined for stall memory
 wire fd_i_mem_err, de_i_mem_err, em_i_mem_err, mw_i_mem_err;
-dff_N #(.N(1)) reg_i_mem_err_f(.q(fd_i_mem_err), .d(i_mem_err), .clk(clk), .rst(rst));
-
+reg_1b reg_i_mem_err_f(.Q(fd_i_mem_err), .D(i_mem_err), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -80,6 +78,11 @@ wire [4:0] dout_ALUOp;
 wire [15:0] dout_read_data_1, dout_read_data_2, dout_Immd, de_PC_2_I, de_PC_2_D, dout_write_data, mw_write_data;
 wire [2:0] mw_writeReg;
 wire de_RegWrite, em_RegWrite, mw_RegWrite; 
+
+// Handle relax passing
+wire stall_or_write;
+assign stall_or_write = (Stall == 1'b1) ? 1'b0 : mw_RegWrite;
+// put in mw_RegWrite port of decode
 
 decode decode0(.clk(clk), .rst(rst), .instruction(fd_mux_instruction), 
                .PC_2(fd_PC_2), .write_data(write_data), .regWrSel(mw_writeReg), .read_data_1(dout_read_data_1), 
@@ -109,57 +112,40 @@ wire [4:0] de_mux_ALUOp;
 
 
 // Control signals: Set control signals to 0 if insert_nop = 1  
-assign de_mux_ALUSrc = (insert_nop) ? 5'b00000 : dout_ALUSrc;
-assign de_mux_invA = (insert_nop) ? 1'b0 : dout_invA;
-assign de_mux_invB = (insert_nop) ? 1'b0  : dout_invB;
-assign de_mux_sign = (insert_nop) ? 1'b0  : dout_sign;
-assign de_mux_Cin = (insert_nop) ? 1'b0 : dout_Cin; // Is always low
-assign de_mux_is_SLBI = (insert_nop) ? 1'b0 : dout_is_SLBI;
-assign de_mux_is_LBI = (insert_nop) ? 1'b0 : dout_is_LBI;
-assign de_mux_MemRead = (insert_nop) ? 1'b0 : dout_MemRead;
-assign de_mux_MemtoReg = (insert_nop) ? 1'b0 : dout_MemtoReg;
-assign de_mux_RegWrite = (insert_nop) ? 1'b0 : dout_RegWrite;
-assign de_mux_MemWrite = (insert_nop) ? 1'b0 : dout_MemWrite;
-assign de_mux_is_branch = (insert_nop) ? 1'b0 : dout_is_branch;
-assign de_mux_PCSrc = (insert_nop) ? 3'b000 : dout_PCSrc; // Give next_PC the current PC
-assign de_mux_ALUOp = (insert_nop) ? 5'b00000 : dout_ALUOp; // not sure if this should be something else
+
+wire set_zero;
+assign set_zero = rst | insert_nop;
+
+// Control signals pipelined
+reg_1b reg_de_ALUSrc(.Q(de_ALUSrc), .D(dout_ALUSrc), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_invA(.Q(de_invA), .D(dout_invA), .clk(clk), .rst(set_zero), .writeEn(~Stall)); 
+reg_1b reg_de_invB(.Q(de_invB), .D(dout_invB), .clk(clk), .rst(set_zero), .writeEn(~Stall)); 
+reg_1b reg_de_sign(.Q(de_sign), .D(dout_sign), .clk(clk), .rst(set_zero), .writeEn(~Stall)); 
+reg_1b reg_de_Cin(.Q(de_Cin), .D(dout_Cin), .clk(clk), .rst(set_zero), .writeEn(~Stall)); 
+reg_1b reg_de_is_SLBI(.Q(de_is_SLBI), .D(dout_is_SLBI), .clk(clk), .rst(set_zero), .writeEn(~Stall)); 
+reg_1b reg_de_is_LBI(.Q(de_is_LBI), .D(dout_is_LBI), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_MemRead(.Q(de_MemRead), .D(dout_MemRead), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_MemtoReg(.Q(de_MemtoReg), .D(dout_MemtoReg), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_RegWrite(.Q(de_RegWrite), .D(dout_RegWrite), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_MemWrite(.Q(de_MemWrite), .D(dout_MemWrite), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_5b reg_de_ALUOp(.Q(de_ALUOp), .D(dout_ALUOp), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_halt(.Q(de_halt), .D(createdump), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+reg_1b reg_de_is_branch(.Q(de_is_branch), .D(dout_is_branch), .clk(clk), .rst(set_zero), .writeEn(~Stall));
+
+// Registers pipelined
+reg_3b reg_de_reg_rd(.Q(de_writeReg), .D(dout_writeReg), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_3b reg_de_reg_rs(.Q(de_readReg1), .D(dout_readReg1), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_3b reg_de_reg_rt(.Q(de_readReg2), .D(dout_readReg2), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 
-
-
-
-// D/E registers
-
-// Control signals that are needed in the next stages
-dff_N #(.N(1)) reg_de_ALUSrc (.q(de_ALUSrc), .d(de_mux_ALUSrc), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_invA(.q(de_invA), .d(de_mux_invA), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_invB(.q(de_invB), .d(de_mux_invB), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_sign(.q(de_sign), .d(de_mux_sign), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_Cin(.q(de_Cin), .d(de_mux_Cin), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_is_SLBI(.q(de_is_SLBI), .d(de_mux_is_SLBI), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_is_LBI(.q(de_is_LBI), .d(de_mux_is_LBI), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_MemRead(.q(de_MemRead), .d(de_mux_MemRead), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_MemtoReg(.q(de_MemtoReg), .d(de_mux_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_reg_wr (.q(de_RegWrite), .d(de_mux_RegWrite), .clk(clk), .rst(rst)); 
-dff_N #(.N(1)) reg_de_MemWrite(.q(de_MemWrite), .d(de_mux_MemWrite), .clk(clk), .rst(rst));
-dff_N #(.N(5)) reg_de_ALUOp (.q(de_ALUOp), .d(de_mux_ALUOp), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_halt(.q(de_halt), .d(createdump), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_de_is_branch(.q(de_is_branch), .d(de_mux_is_branch), .clk(clk), .rst(rst));
-
- 
-// Doesn't need to be muxed, just passed through the pipeline
-dff_N #(.N(3)) reg_de_reg_rd(.q(de_writeReg), .d(dout_writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_de_reg_rs(.q(de_readReg1), .d(dout_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_de_reg_rt(.q(de_readReg2), .d(dout_readReg2), .clk(clk), .rst(rst));
-
-dff_N #(.N(16)) reg_de_read_data_2 (.q(de_read_data_2), .d(dout_read_data_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_Immd (.q(de_Immd), .d(dout_Immd), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_de_read_data_1 (.q(de_read_data_1), .d(dout_read_data_1), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_de_write_data (.q(de_write_data), .d(dout_write_data), .clk(clk), .rst(rst));
+reg_16b reg_de_read_data_2(.Q(de_read_data_2), .D(dout_read_data_2), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_de_Immd(.Q(de_Immd), .D(dout_Immd), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_de_read_data_2(.Q(de_read_data_2), .D(dout_read_data_2), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_de_read_data_1 (.Q(de_read_data_1), .D(dout_read_data_1), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 wire [15:0] de_instruction;
 dff_N #(.N(16)) reg_de_instruction(.q(de_instruction), .d(fd_mux_instruction), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_i_mem_err_d(.q(de_i_mem_err), .d(fd_i_mem_err), .clk(clk), .rst(rst));
+reg_1b reg_i_mem_err_d(.Q(de_i_mem_err), .D(fd_i_mem_err), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 wire [15:0] mw_read_data_1, mw_read_data_2, em_read_data_2, em_read_data_1;
 
@@ -183,24 +169,24 @@ wire [2:0] em_readReg1, em_readReg2, em_writeReg;
 // NO NEED TO MUX, nop detected in decode/execute stage
 
 // E/M registers
-dff_N #(.N(16)) reg_em_ALU_Result(.q(em_ALU_Result), .d(eout_ALU_Result), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_MemRead(.q(em_MemRead), .d(de_MemRead), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_MemWrite(.q(em_MemWrite), .d(de_MemWrite), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_em_read_data_2(.q(em_read_data_2), .d(de_read_data_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_em_read_data_1(.q(em_read_data_1), .d(de_read_data_1), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_em_write_data (.q(em_write_data), .d(de_write_data), .clk(clk), .rst(rst));
+reg_16b reg_em_ALU_Result(.Q(em_ALU_Result), .D(eout_ALU_Result), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_MemRead(.Q(em_MemRead), .D(de_MemRead), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_MemWrite(.Q(em_MemWrite), .D(de_MemWrite), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_read_data_2(.Q(em_read_data_2), .D(de_read_data_2), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_read_data_1(.Q(em_read_data_1), .D(de_read_data_1), .clk(clk), .rst(rst), .writeEn(~Stall));
+// reg_16b reg_em_write_data(.Q(em_write_data), .D(de_write_data), .clk(clk), .rst(rst));
 
 // Needed later
-dff_N #(.N(1)) reg_em_MemtoReg(.q(em_MemtoReg), .d(de_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_em_reg_rd (.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_halt(.q(em_halt), .d(de_halt), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_em_reg_wr (.q(em_RegWrite), .d(de_RegWrite), .clk(clk), .rst(rst)); 
-dff_N #(.N(3)) reg_em_reg_rs(.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_em_reg_rt(.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst));
+reg_1b reg_em_MemtoReg(.Q(em_MemtoReg), .D(de_MemtoReg), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_reg_rd(.q(em_writeReg), .d(de_writeReg), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_halt(.Q(em_halt), .D(de_halt), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_em_reg_wr(.Q(em_RegWrite), .D(de_RegWrite), .clk(clk), .rst(rst), .writeEn(~Stall)); 
+reg_3b reg_em_reg_rs(.q(em_readReg1), .d(de_readReg1), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_3b reg_em_reg_rt(.q(em_readReg2), .d(de_readReg2), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 wire [15:0] em_instruction;
 dff_N #(.N(16)) reg_em_instruction(.q(em_instruction), .d(de_instruction), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_i_mem_err_e(.q(em_i_mem_err), .d(de_i_mem_err), .clk(clk), .rst(rst));
+reg_1b reg_i_mem_err_e(.Q(em_i_mem_err), .D(de_i_mem_err), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,16 +195,9 @@ wire [15:0] read_data;
 // I-Cache signals
 wire i_done /* I sure am*/, i_cacheHit;
 wire i_stall;
-// memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
-//                .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), 
-//                .rst(rst), .createdump(em_halt), .err(errM)
-//                );
-memory memory0(
-   // Inputs
-	.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), .MemWrite(em_MemWrite), .clk(clk), .rst(rst), .createdump(em_halt),
-	// Outputs
-	.read_data_out(read_data), .Done(i_done), .Stall(i_stall), .CacheHit(i_cacheHit), .err(errM)
-   );
+
+memory memory0(.ALU_result(em_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), 
+               .MemWrite(em_MemWrite), .read_data_out(read_data), .clk(clk), .rst(rst), .createdump(em_halt), .err(errM));                
 
 
 //////////////////////////////////////////////////////// M/W pipeline register /////////////////////////////////////////////////////////
@@ -230,21 +209,20 @@ wire mw_MemtoReg, mw_MemRead, mw_MemWrite, mw_d_mem_err;
 // Nop is propogated from D/E pipeline
 
 // M/W registers
-dff_N #(.N(16)) reg_mw_ALU_Result(.q(mw_ALU_Result), .d(em_ALU_Result), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_read_data(.q(mw_read_data), .d(read_data), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_mw_MemtoReg(.q(mw_MemtoReg), .d(em_MemtoReg), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_mw_reg_rd (.q(mw_writeReg), .d(em_writeReg), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_mw_halt(.q(mw_halt), .d(em_halt), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_mw_reg_wr (.q(mw_RegWrite), .d(em_RegWrite), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_read_data_2(.q(mw_read_data_2), .d(em_read_data_2), .clk(clk), .rst(rst));
-dff_N #(.N(16)) reg_mw_read_data_1(.q(mw_read_data_1), .d(em_read_data_1), .clk(clk), .rst(rst));
-// dff_N #(.N(16)) reg_mw_write_data (.q(mw_write_data), .d(em_write_data), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_mw_reg_rs(.q(mw_readReg1), .d(em_readReg1), .clk(clk), .rst(rst));
-dff_N #(.N(3)) reg_mw_reg_rt(.q(mw_readReg2), .d(em_readReg2), .clk(clk), .rst(rst));
+reg_16b reg_mw_ALU_Result(.Q(mw_ALU_Result), .D(em_ALU_Result), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_mw_read_data(.Q(mw_read_data), .D(read_data), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_mw_MemtoReg(.Q(mw_MemtoReg), .D(em_MemtoReg), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_3b reg_mw_reg_rd(.Q(mw_writeReg), .D(em_writeReg), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_mw_halt(.Q(mw_halt), .D(em_halt), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_mw_reg_wr(.Q(mw_RegWrite), .D(em_RegWrite), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_mw_read_data_2(.Q(mw_read_data_2), .D(em_read_data_2), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_16b reg_mw_read_data_1(.Q(mw_read_data_1), .D(em_read_data_1), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_3b reg_mw_reg_rs(.Q(mw_readReg1), .D(em_readReg1), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_3b reg_mw_reg_rt(.Q(mw_readReg2), .D(em_readReg2), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 // Pipeline error to write back 
-dff_N #(.N(1)) reg_d_mem_err(.q(mw_d_mem_err), .d(d_mem_err), .clk(clk), .rst(rst));
-dff_N #(.N(1)) reg_i_mem_err_m(.q(mw_i_mem_err), .d(em_i_mem_err), .clk(clk), .rst(rst));
+reg_1b reg_d_mem_err(.Q(mw_d_mem_err), .D(d_mem_err), .clk(clk), .rst(rst), .writeEn(~Stall));
+reg_1b reg_i_mem_err_m(.Q(mw_i_mem_err), .D(em_i_mem_err), .clk(clk), .rst(rst), .writeEn(~Stall));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -262,17 +240,6 @@ wire [2:0] wb_writeReg;
 // Pipeline for hazard unit
 dff_N #(.N(1)) reg_wb_reg_wr (.q(wb_RegWrite), .d(mw_RegWrite), .clk(clk), .rst(rst));
 dff_N #(.N(3)) reg_wb_reg_rd (.q(wb_writeReg), .d(mw_writeReg), .clk(clk), .rst(rst));
-
-///////////////////////////////////////////////////////////////// Memory ///////////////////////////////////////////////////////////
-// D-Cache Signals
-wire d_done, d_cacheHit;
-wire d_stall;
-
-memory m(
-   // Inputs
-	.ALU_result(mw_ALU_Result), .read_data_in(em_read_data_2), .MemRead(em_MemRead), .MemWrite(em_MemWrite), .clk(clk), .rst(rst), .createdump(createdump),
-	// Outputs
-	.read_data_out(read_data), .Done(d_done), .Stall(d_stall), .CacheHit(d_cacheHit), .err(errM));
 
 ///////////////////////////////////////////////////////////////// Hazard Unit ///////////////////////////////////////////////////////////
 
