@@ -31,8 +31,10 @@ module fetch(PCSrc, PC_2_out, clk, rst, instruction, fetch_enable, createdump, e
 	// Find next_PC
 	assign next_PC = (PCSrc == 2'b00) ? PC_2 : (PCSrc == 2'b01) ? ALU_Result_in : (PCSrc == 2'b10) ? PC_2_D_in : branch;
 
+
+	wire Stall_temp;
 	// Recycle PC if nop
-	assign real_next_PC = (insert_nop == 1'b1) ? PC: next_PC;
+	assign real_next_PC = (insert_nop == 1'b1 | Stall_temp == 1'b1 ) ? PC: next_PC;
 	
 	
 	// Program counter register
@@ -47,14 +49,16 @@ module fetch(PCSrc, PC_2_out, clk, rst, instruction, fetch_enable, createdump, e
 	stallmem mem0(
 
 	// Outputs
-	.DataOut(instruction), .Done(), .Stall(Stall), .CacheHit(),
+	.DataOut(instruction), .Done(), .Stall(Stall_temp), .CacheHit(),
 
 	// Inputs
-	 .err(err), .Addr(PC), .DataIn(16'b0), .Rd(fetch_enable), .Wr(1'b0), .createdump(createdump), .clk(clk), .rst(rst));
+	 .err(err), .Addr(PC), .DataIn(16'b0), .Rd(1'b1), .Wr(1'b0), .createdump(createdump), .clk(clk), .rst(rst));
 	
 	// pipeline error
 
 	assign currPC = PC;
+
+	assign Stall = Stall_temp;
 
 	// For now
 	// assign err = 1'b0;

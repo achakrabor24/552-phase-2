@@ -9,15 +9,14 @@ module memory (
 	// Inputs
 	ALU_result, read_data_in, MemRead, MemWrite, clk, rst, createdump,
 	// Outputs
-	read_data_out, Done, Stall, CacheHit, err);
+	read_data_out, err);
 
 	input [15:0] ALU_result, read_data_in;
 	input MemRead, MemWrite, clk, rst;
 	input createdump;
 
 	output [15:0] read_data_out;
-	output Done, CacheHit;
-	output Stall;
+	// output Done, CacheHit, Stall;
 	output err;
 
 	wire memReadorWrite;
